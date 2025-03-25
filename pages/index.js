@@ -1,22 +1,19 @@
-import { useSession, signIn } from "next-auth/react";
-import TransactionList from "../components/TransactionList";
+import { getServerSession } from "../utils/getServerSession";
 
-export default function Home() {
-  const { data: session, status } = useSession();
+export { getServerSession as getServerSideProps };
 
-  if (status === "loading") {
-    return <div>Loading...</div>;
-  }
+export default function ProtectedPage({ session }) {
+  console.log("Session reçue dans le composant :", session);
 
-  if (!session) {
-    signIn();
-    return null; // Render nothing while redirecting
+  if (!session || !session.user) {
+    return <p>Chargement ou utilisateur non authentifié...</p>;
   }
 
   return (
     <div>
-      <h1>Suivi des Transactions</h1>
-      <TransactionList />
+      <h1>
+        Bienvenue, {session.user.email} (Rôle : {session.user.role})
+      </h1>
     </div>
   );
 }

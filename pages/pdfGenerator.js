@@ -1,36 +1,41 @@
 import PDFDocument from "pdfkit";
-import fs from "fs";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export function generatePDF(transaction) {
-  const doc = new PDFDocument();
-  const filePath = `./data/transaction_${transaction.id}.pdf`;
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument();
+    const buffers = [];
 
-  console.log("Generating PDF at:", filePath);
+    console.log("Generating PDF for transaction:", transaction.id);
 
-  const writeStream = fs.createWriteStream(filePath);
-  writeStream.on("finish", () => {
-    console.log("PDF generated successfully at:", filePath);
+    doc.on("data", buffers.push.bind(buffers));
+    doc.on("end", () => {
+      const pdfData = Buffer.concat(buffers);
+      resolve(pdfData);
+    });
+    doc.on("error", reject);
+
+    const formattedDate = format(new Date(transaction.date), "dd/MM/yyyy", {
+      locale: fr,
+    });
+
+    doc.fontSize(25).text("Confirmation de votre transaction", {
+      align: "center",
+    });
+
+    doc.moveDown();
+    doc.fontSize(16).text(`Bonjour ${transaction.clientName},`);
+    doc.moveDown();
+    doc.text(`Votre transaction a été enregistrée avec succès.`);
+    doc.moveDown();
+    doc.text(`Détails de la transaction :`);
+    doc.text(`- Date : ${formattedDate}`);
+    doc.text(`- Numéro d’ordre : ${transaction.orderNumber}`);
+    doc.text(`- Montant : ${transaction.amount}€`);
+    doc.moveDown();
+    doc.text(`Merci pour votre confiance !`);
+
+    doc.end();
   });
-
-  doc.pipe(writeStream);
-
-  doc.fontSize(25).text("Confirmation de votre transaction", {
-    align: "center",
-  });
-
-  doc.moveDown();
-  doc.fontSize(16).text(`Bonjour ${transaction.clientName},`);
-  doc.moveDown();
-  doc.text(`Votre transaction a été enregistrée avec succès.`);
-  doc.moveDown();
-  doc.text(`Détails de la transaction :`);
-  doc.text(`- Date : ${transaction.date}`);
-  doc.text(`- Numéro d’ordre : ${transaction.orderNumber}`);
-  doc.text(`- Montant : ${transaction.amount}€`);
-  doc.moveDown();
-  doc.text(`Merci pour votre confiance !`);
-
-  doc.end();
-
-  return filePath;
 }

@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useSession, signIn } from "next-auth/react";
 import TransactionForm from "./TransactionForm"; // Import unique
 
 export default function TransactionList() {
-  const { data: session, status } = useSession();
   const [transactions, setTransactions] = useState([]);
-
-  useEffect(() => {
-    if (status === "loading") return; // Do nothing while loading
-    if (!session) signIn(); // Redirect to login if not authenticated
-  }, [session, status]);
 
   const fetchTransactions = async () => {
     try {
@@ -22,10 +15,8 @@ export default function TransactionList() {
   };
 
   useEffect(() => {
-    if (session) {
-      fetchTransactions();
-    }
-  }, [session]);
+    fetchTransactions();
+  }, []);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -35,14 +26,6 @@ export default function TransactionList() {
       year: "numeric",
     });
   };
-
-  if (status === "loading") {
-    return <div>Loading...</div>;
-  }
-
-  if (!session) {
-    return null; // Render nothing while redirecting
-  }
 
   return (
     <div>

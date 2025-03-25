@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-export async function sendEmail(to, subject, text, attachmentPath) {
+export async function sendEmail(to, subject, text, pdfBuffer, filename) {
   let transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
@@ -16,8 +16,8 @@ export async function sendEmail(to, subject, text, attachmentPath) {
     text: text, // texte brut du corps de l'e-mail
     attachments: [
       {
-        filename: `transaction.pdf`,
-        path: attachmentPath,
+        filename: filename,
+        content: pdfBuffer,
         contentType: "application/pdf",
       },
     ],
