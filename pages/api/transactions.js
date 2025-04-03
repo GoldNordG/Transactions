@@ -3,23 +3,37 @@ import { sendEmail } from "../mailer"; // Importer la fonction d'envoi d'e-mail
 import { generatePDF } from "../pdfGenerator"; // Importer la fonction de génération de PDF
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]";
+// import { getServerSession } from "next-auth";
+// import { authOptions } from "../auth/[...nextauth]";
 
 const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
-  const session = await getServerSession(req, res, authOptions);
+  // Supprimez ou commentez la vérification de la session
+  // const session = await getServerSession(req, res, authOptions);
 
-  if (!session) {
-    return res
-      .status(401)
-      .json({ message: "Non authentifié. Redirection vers la page de login." });
-  }
+  // if (!session) {
+  //   return res
+  //     .status(401)
+  //     .json({ message: "Non authentifié. Veuillez vous connecter." });
+  // }
 
   if (req.method === "POST") {
-    const { date, clientName, clientMail, orderNumber, amount, location } =
-      req.body;
+    const {
+      date,
+      clientName,
+      clientSurname,
+      clientMail,
+      phone,
+      orderNumber,
+      designation,
+      weight,
+      carats,
+      unitPrice,
+      amount,
+      location,
+      userId,
+    } = req.body;
 
     console.log("Request body:", req.body);
 
@@ -27,24 +41,32 @@ export default async function handler(req, res) {
     if (
       !date ||
       !clientName ||
-      !clientMail ||
+      !clientSurname ||
       !orderNumber ||
-      !amount ||
-      !location
+      !designation ||
+      !weight ||
+      !carats ||
+      !unitPrice ||
+      !amount
     ) {
-      console.error("Validation error: Missing required fields");
-      return res
-        .status(400)
-        .json({ message: "Tous les champs sont obligatoires" });
+      return res.status(400).json({
+        message: "Tous les champs obligatoires doivent être remplis.",
+      });
     }
 
     console.log("Data being sent to Prisma:", {
       date: new Date(date),
       clientName,
       clientMail,
+      phone,
       orderNumber,
+      designation,
+      weight: parseFloat(weight),
+      carats: parseInt(carats),
+      unitPrice: parseFloat(unitPrice),
       amount: parseFloat(amount),
       location,
+      userId,
     });
 
     // Ajouter la nouvelle transaction
@@ -52,78 +74,88 @@ export default async function handler(req, res) {
       data: {
         date: new Date(date),
         clientName,
-        clientMail,
+        clientSurname,
+        clientMail: clientMail || null,
+        phone: phone || null,
         orderNumber,
+        designation,
+        weight: parseFloat(weight),
+        carats: parseInt(carats),
+        unitPrice: parseFloat(unitPrice),
         amount: parseFloat(amount),
-        location,
-        userId: session.user.id, // Associer la transaction à l'utilisateur connecté
+        location: location || null,
+        userId: userId || null,
       },
     });
 
     console.log("Transaction saved successfully");
 
-    // Générer le PDF en mémoire
-    console.log("Generating PDF for transaction:", newTransaction);
-    const pdfBuffer = await generatePDF(newTransaction);
-    console.log("PDF generated in memory");
+    // Générer la facture pour l'admin
+    const facturePDF = await generatePDF(newTransaction, "facture");
 
-    // Générer le lien de validation
-    const validationLink = `http://localhost:3000/api/validate-transaction?id=${newTransaction.id}`;
+    // Générer le formulaire de rétractation pour le client
+    const retractationPDF = await generatePDF(newTransaction, "retractation");
 
     // Formater la date
-    const formattedDate = format(new Date(date), "dd/MM/yyyy", {
-      locale: fr,
-    });
+    const formattedDate = format(new Date(date), "dd/MM/yyyy", { locale: fr });
 
-    // Envoyer un e-mail au client avec le PDF en pièce jointe et le lien de validation
-    const subject = "Confirmation de votre transaction";
-    const text = `Bonjour ${clientName},\n\nVotre transaction a été enregistrée avec succès.\n\nDétails de la transaction :\n- Date : ${formattedDate}\n- Numéro d’ordre : ${orderNumber}\n- Montant : ${amount}€\n\nMerci pour votre confiance !\n\nVeuillez valider votre transaction en cliquant sur le lien suivant : ${validationLink}`;
-    const filename = `transaction_${orderNumber}.pdf`;
-
-    console.log("Sending email to:", clientMail);
-    try {
-      await sendEmail(clientMail, subject, text, pdfBuffer, filename);
-      console.log("Email sent successfully");
-    } catch (emailError) {
-      console.error("Error sending email:", emailError);
-    }
-
-    // Envoyer un e-mail à vous-même avec la facture de la transaction
+    // Envoyer la facture à l'admin
     const adminEmail = "goldnord.digital@gmail.com"; // Remplacez par votre adresse e-mail
-    const adminSubject = `Nouvelle transaction enregistrée : ${orderNumber}`;
-    const adminText = `Une nouvelle transaction a été enregistrée.\n\nDétails de la transaction :\n- Date : ${formattedDate}\n- Nom du client : ${clientName}\n- Email du client : ${clientMail}\n- Numéro d’ordre : ${orderNumber}\n- Montant : ${amount}€\n\nLa facture est jointe à cet e-mail.`;
+    const adminSubject = `Nouvelle transaction : ${orderNumber}`;
+    const adminText = `
+Une nouvelle transaction a été enregistrée.
 
-    console.log("Sending email to admin:", adminEmail);
-    try {
-      await sendEmail(adminEmail, adminSubject, adminText, pdfBuffer, filename);
-      console.log("Admin email sent successfully");
-    } catch (adminEmailError) {
-      console.error("Error sending admin email:", adminEmailError);
-    }
+Détails de la transaction :
+- Date : ${formattedDate}
+- Client : ${clientName} ${clientSurname}
+- E-mail : ${clientMail || "Non spécifié"}
+- Téléphone : ${phone || "Non spécifié"}
+- Numéro d'ordre : ${orderNumber}
+- Désignation : ${designation}
+- Poids : ${weight} g
+- Carats : ${carats}
+- Prix unitaire : ${unitPrice} €
+- Montant total : ${amount} €
+- Lieu : ${location || "Non spécifié"}
+- Vendeur : ${userId || "Non spécifié"}
+`;
 
-    // Répondre avec la nouvelle transaction
+    await sendEmail(
+      adminEmail,
+      adminSubject,
+      adminText,
+      facturePDF,
+      `facture_${orderNumber}.pdf`
+    );
+
+    // Envoyer le formulaire de rétractation au client
+    const clientSubject = "Votre formulaire de rétractation";
+    const clientText = `Cher(e) ${clientName},
+
+Conformément aux dispositions légales en vigueur, nous vous transmettons ci-joint le formulaire de rétractation relatif à votre commande ${orderNumber}.
+
+Si vous souhaitez exercer votre droit de rétractation, nous vous invitons à compléter ce formulaire et à nous le retourner dans un délai de nombre de jours à compter de la réception de votre commande.
+
+Pour toute question ou assistance, notre service client reste à votre disposition à coordonnées du service client.
+
+Cordialement,
+GOLD NORD`;
+
+    await sendEmail(
+      clientMail,
+      clientSubject,
+      clientText,
+      retractationPDF,
+      `retractation_${orderNumber}.pdf`
+    );
+
     res.status(201).json(newTransaction);
   } else if (req.method === "GET") {
     try {
-      let transactions;
-
-      if (session.user.role === "admin") {
-        // L'administrateur peut voir toutes les transactions
-        transactions = await prisma.transaction.findMany();
-      } else if (session.user.role === "agency") {
-        // Les agences ne peuvent voir que leurs propres transactions
-        transactions = await prisma.transaction.findMany({
-          where: {
-            userId: session.user.id,
-          },
-        });
-      } else {
-        return res.status(403).json({ message: "Accès interdit" });
-      }
-
+      const transactions = await prisma.transaction.findMany();
       res.status(200).json(transactions);
     } catch (error) {
-      console.error("Error fetching transactions:", error);
+      console.error("Erreur lors de la récupération des transactions :", error);
       res
         .status(500)
         .json({ message: "Erreur lors de la récupération des transactions" });

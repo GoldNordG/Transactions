@@ -1,19 +1,14 @@
-import { getServerSession } from "../utils/getServerSession";
+import TransactionForm from "../components/TransactionForm";
+import TransactionList from "../components/TransactionList";
 
-export { getServerSession as getServerSideProps };
-
-export default function ProtectedPage({ session }) {
-  console.log("Session reçue dans le composant :", session);
-
-  if (!session || !session.user) {
-    return <p>Chargement ou utilisateur non authentifié...</p>;
-  }
-
+export default function ProtectedPage() {
   return (
     <div>
-      <h1>
-        Bienvenue, {session.user.email} (Rôle : {session.user.role})
-      </h1>
+      <h1>Bienvenue sur la page des transactions</h1>
+      {/* Formulaire pour ajouter une transaction */}
+      <TransactionForm />
+      {/* Liste des transactions */}
+      <TransactionList />
     </div>
   );
 }

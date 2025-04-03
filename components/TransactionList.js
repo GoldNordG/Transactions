@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import TransactionForm from "./TransactionForm"; // Import unique
 
 export default function TransactionList() {
   const [transactions, setTransactions] = useState([]);
@@ -30,21 +29,20 @@ export default function TransactionList() {
   return (
     <div>
       <h2>Liste des Transactions</h2>
-
-      {/* Formulaire d'ajout de transaction (une seule instance) */}
-      <TransactionForm onTransactionAdded={fetchTransactions} />
-
-      {/* Tableau des transactions */}
       <table>
         <thead>
           <tr>
             <th>Date</th>
             <th>Numéro d’ordre</th>
             <th>Nom du client</th>
-            <th>Mail du client</th>
-            <th>Montant</th>
+            <th>Mail</th>
+            <th>Téléphone</th>
+            <th>Désignation</th>
+            <th>Poids (g)</th>
+            <th>Carats</th>
+            <th>Prix unitaire (EUR)</th>
+            <th>Montant total (EUR)</th>
             <th>Lieu</th>
-            <th>Validée</th> {/* Nouvelle colonne pour l'état de validation */}
           </tr>
         </thead>
         <tbody>
@@ -53,11 +51,14 @@ export default function TransactionList() {
               <td>{formatDate(transaction.date)}</td>
               <td>{transaction.orderNumber}</td>
               <td>{transaction.clientName}</td>
-              <td>{transaction.clientMail}</td>
-              <td>{transaction.amount}€</td>
+              <td>{transaction.clientMail || "Non spécifié"}</td>
+              <td>{transaction.phone || "Non spécifié"}</td>
+              <td>{transaction.designation}</td>
+              <td>{transaction.weight} g</td>
+              <td>{transaction.carats}</td>
+              <td>{transaction.unitPrice} €</td>
+              <td>{transaction.amount} €</td>
               <td>{transaction.location || "Non spécifié"}</td>
-              <td>{transaction.validated ? "Oui" : "Non"}</td>{" "}
-              {/* Afficher l'état de validation */}
             </tr>
           ))}
         </tbody>

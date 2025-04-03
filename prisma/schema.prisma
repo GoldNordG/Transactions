@@ -23,13 +23,19 @@ model User {
 }
 
 model Transaction {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  clientName  String
-  clientMail  String
-  orderNumber String
-  amount      Float
-  location    String
-  user        User     @relation(fields: [userId], references: [id]) // Relation to User
-  userId      Int      // Foreign key to link to the User
+  id            Int      @id @default(autoincrement())
+  date          DateTime
+  clientName    String
+  clientSurname String
+  clientMail    String?  // Optionnel
+  phone         String?  // Optionnel
+  orderNumber   String
+  designation   String
+  weight        Float
+  carats        Int
+  unitPrice     Float
+  amount        Float
+  location      String?  // Optionnel
+  userId        Int?     // Foreign key to User Optionnel
+  user          User?     @relation(fields: [userId], references: [id]) // Relation to User Optionnel
 }
