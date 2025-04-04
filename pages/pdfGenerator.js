@@ -34,27 +34,27 @@ export function generatePDF(transaction, type = "facture") {
 
       // Informations de l'acheteur
       doc.fontSize(16).text("Acheteur (client) :", { underline: true });
-      doc.text(`Nom : ${transaction.clientName}`);
-      doc.text(`Adresse : [Adresse complète]`);
-      doc.text(`Téléphone : [Numéro]`);
-      doc.text(`E-mail : ${transaction.clientMail}`);
+      doc.text(`Nom : ${transaction.clientName} ${transaction.clientSurname}`);
+      doc.text(`Téléphone : ${transaction.phone || "Non spécifié"}`);
+      doc.text(`E-mail : ${transaction.clientMail || "Non spécifié"}`);
       doc.moveDown();
 
       // Détails de la transaction
       doc.fontSize(16).text("DÉTAIL DE LA TRANSACTION :", { underline: true });
-      doc.text(`Désignation du bien : [Ex. : Bague en or]`);
-      doc.text(`Poids (g) : [5]`);
-      doc.text(`Titre (carats) : [18K]`);
-      doc.text(`Prix unitaire (EUR) : [XX EUR/g]`);
-      doc.text(`Montant (EUR) : ${transaction.amount}€`);
+      doc.text(`Désignation du bien : ${transaction.designation}`);
+      doc.text(`Poids (g) : ${transaction.weight}`);
+      doc.text(`Titre (carats) : ${transaction.carats}`);
+      doc.text(`Prix unitaire (EUR) : ${transaction.unitPrice} €`);
+      doc.text(`Montant (EUR) : ${transaction.amount} €`);
       doc.moveDown();
-      doc.text(`Total TTC : ${transaction.amount}€`);
+      doc.text(`Total TTC : ${transaction.amount} €`);
       doc.moveDown();
 
       // Informations supplémentaires
       doc.text(`Date de la transaction : ${formattedDate}`);
       doc.text(`Mode de paiement : [Espèces / Virement / Chèque]`);
       doc.text(`Facture n° : ${transaction.orderNumber}`);
+      doc.text(`Lieu : ${transaction.location || "Non spécifié"}`);
       doc.moveDown();
     } else if (type === "retractation") {
       // Générer le formulaire de rétractation
@@ -66,15 +66,19 @@ export function generatePDF(transaction, type = "facture") {
       doc.text(`[Adresse complète]`);
       doc.moveDown();
       doc.text(
-        `Je soussigné(e) ${transaction.clientName}, demeurant à [Adresse complète], vous informe par la présente que je me rétracte du contrat de vente suivant :`
+        `Je soussigné(e) ${transaction.clientName} ${transaction.clientSurname}, demeurant à [Adresse complète], vous informe par la présente que je me rétracte du contrat de vente suivant :`
       );
       doc.moveDown();
-      doc.text(`- Nature du bien : [Exemple : bijou en or, pièce]`);
+      doc.text(`- Nature du bien : ${transaction.designation}`);
+      doc.text(`- Poids : ${transaction.weight} g`);
+      doc.text(`- Carats : ${transaction.carats}`);
       doc.text(`- Date de la vente : ${formattedDate}`);
-      doc.text(`- Montant : ${transaction.amount}€`);
+      doc.text(`- Montant : ${transaction.amount} €`);
       doc.text(`- Facture n° : ${transaction.orderNumber}`);
       doc.moveDown();
-      doc.text(`Fait à [Ville], le ${formattedDate}`);
+      doc.text(
+        `Fait à ${transaction.location || "[Ville]"}, le ${formattedDate}`
+      );
       doc.moveDown();
       doc.text("Signature du client : __________________________");
       doc.moveDown();

@@ -1,22 +1,22 @@
 import { PrismaClient } from "@prisma/client";
-import { sendEmail } from "../mailer"; // Importer la fonction d'envoi d'e-mail
-import { generatePDF } from "../pdfGenerator"; // Importer la fonction de génération de PDF
+import { sendEmail } from "../mailer";
+import { generatePDF } from "../pdfGenerator";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-// import { getServerSession } from "next-auth";
-// import { authOptions } from "../auth/[...nextauth]";
+import { getServerSession } from "next-auth";
+import { authOptions } from "./auth/[...nextauth]";
 
 const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
-  // Supprimez ou commentez la vérification de la session
-  // const session = await getServerSession(req, res, authOptions);
+  // Vérifier l'authentification
+  const session = await getServerSession(req, res, authOptions);
 
-  // if (!session) {
-  //   return res
-  //     .status(401)
-  //     .json({ message: "Non authentifié. Veuillez vous connecter." });
-  // }
+  if (!session) {
+    return res
+      .status(401)
+      .json({ message: "Non authentifié. Veuillez vous connecter." });
+  }
 
   if (req.method === "POST") {
     const {
@@ -32,10 +32,7 @@ export default async function handler(req, res) {
       unitPrice,
       amount,
       location,
-      userId,
     } = req.body;
-
-    console.log("Request body:", req.body);
 
     // Valider les données
     if (
@@ -54,22 +51,20 @@ export default async function handler(req, res) {
       });
     }
 
-    console.log("Data being sent to Prisma:", {
-      date: new Date(date),
-      clientName,
-      clientMail,
-      phone,
-      orderNumber,
-      designation,
-      weight: parseFloat(weight),
-      carats: parseInt(carats),
-      unitPrice: parseFloat(unitPrice),
-      amount: parseFloat(amount),
-      location,
-      userId,
-    });
+    // Définir la localisation en fonction du rôle de l'utilisateur
+    let transactionLocation = location;
 
-    // Ajouter la nouvelle transaction
+    // Si c'est un utilisateur d'agence, utiliser sa localisation
+    if (session.user.role === "agency") {
+      // Récupérer l'information complète de l'utilisateur
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+      });
+
+      transactionLocation = user.location;
+    }
+
+    // Ajouter la nouvelle transaction avec l'ID utilisateur de la session
     const newTransaction = await prisma.transaction.create({
       data: {
         date: new Date(date),
@@ -83,12 +78,10 @@ export default async function handler(req, res) {
         carats: parseInt(carats),
         unitPrice: parseFloat(unitPrice),
         amount: parseFloat(amount),
-        location: location || null,
-        userId: userId || null,
+        location: transactionLocation,
+        userId: session.user.id,
       },
     });
-
-    console.log("Transaction saved successfully");
 
     // Générer la facture pour l'admin
     const facturePDF = await generatePDF(newTransaction, "facture");
@@ -100,8 +93,8 @@ export default async function handler(req, res) {
     const formattedDate = format(new Date(date), "dd/MM/yyyy", { locale: fr });
 
     // Envoyer la facture à l'admin
-    const adminEmail = "goldnord.digital@gmail.com"; // Remplacez par votre adresse e-mail
-    const adminSubject = `Nouvelle transaction : ${orderNumber}`;
+    const adminEmail = "goldnord.digital@gmail.com";
+    const adminSubject = `Nouvelle transaction : ${orderNumber} à ${location} le ${formattedDate}`;
     const adminText = `
 Une nouvelle transaction a été enregistrée.
 
@@ -116,8 +109,8 @@ Détails de la transaction :
 - Carats : ${carats}
 - Prix unitaire : ${unitPrice} €
 - Montant total : ${amount} €
-- Lieu : ${location || "Non spécifié"}
-- Vendeur : ${userId || "Non spécifié"}
+- Lieu : ${transactionLocation || "Non spécifié"}
+- Vendeur : ${session.user.email}
 `;
 
     await sendEmail(
@@ -128,31 +121,72 @@ Détails de la transaction :
       `facture_${orderNumber}.pdf`
     );
 
-    // Envoyer le formulaire de rétractation au client
-    const clientSubject = "Votre formulaire de rétractation";
-    const clientText = `Cher(e) ${clientName},
+    // Envoyer le formulaire de rétractation au client si l'email est fourni
+    if (clientMail) {
+      const clientSubject = "Votre formulaire de rétractation";
+      const clientText = `Cher(e) ${clientName},
 
 Conformément aux dispositions légales en vigueur, nous vous transmettons ci-joint le formulaire de rétractation relatif à votre commande ${orderNumber}.
 
-Si vous souhaitez exercer votre droit de rétractation, nous vous invitons à compléter ce formulaire et à nous le retourner dans un délai de nombre de jours à compter de la réception de votre commande.
+Si vous souhaitez exercer votre droit de rétractation, nous vous invitons à compléter ce formulaire et à nous le retourner dans un délai de 14 jours à compter de la réception de votre commande.
 
-Pour toute question ou assistance, notre service client reste à votre disposition à coordonnées du service client.
+Pour toute question ou assistance, notre service client reste à votre disposition.
 
 Cordialement,
 GOLD NORD`;
 
-    await sendEmail(
-      clientMail,
-      clientSubject,
-      clientText,
-      retractationPDF,
-      `retractation_${orderNumber}.pdf`
-    );
+      await sendEmail(
+        clientMail,
+        clientSubject,
+        clientText,
+        retractationPDF,
+        `retractation_${orderNumber}.pdf`
+      );
+    }
 
     res.status(201).json(newTransaction);
   } else if (req.method === "GET") {
     try {
-      const transactions = await prisma.transaction.findMany();
+      // Filtrer les transactions selon le rôle de l'utilisateur
+      let transactions;
+
+      if (session.user.role === "admin") {
+        // L'admin voit toutes les transactions
+        transactions = await prisma.transaction.findMany({
+          include: {
+            user: {
+              select: {
+                email: true,
+                location: true,
+              },
+            },
+          },
+        });
+      } else if (session.user.role === "agency") {
+        // Récupérer l'utilisateur pour obtenir sa localisation
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+        });
+
+        // L'agence ne voit que ses propres transactions
+        transactions = await prisma.transaction.findMany({
+          where: {
+            location: user.location,
+          },
+          include: {
+            user: {
+              select: {
+                email: true,
+                location: true,
+              },
+            },
+          },
+        });
+      } else {
+        // Rôle non reconnu
+        return res.status(403).json({ message: "Accès non autorisé" });
+      }
+
       res.status(200).json(transactions);
     } catch (error) {
       console.error("Erreur lors de la récupération des transactions :", error);

@@ -2,28 +2,37 @@
 table {
   width: 100%; /* Le tableau prend toute la largeur disponible */
   border-collapse: collapse; /* Fusionner les bordures des cellules */
-  margin: 20px 0; /* Marge autour du tableau */
   font-family: Arial, sans-serif; /* Police de caractères */
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Ombre légère pour un effet de profondeur */
+  table-layout: fixed; /* Stabilise la largeur des colonnes */
+  font-size: 0.85rem;
 }
 
 /* Style de l'en-tête du tableau */
 thead th {
   background-color: black; /* Couleur de fond de l'en-tête */
   color: white; /* Couleur du texte */
-  padding: 12px 15px; /* Espacement interne */
+  font-size: 0.85rem;
+  padding: 8px 10px; /* Espacement interne */
   text-align: left; /* Alignement du texte à gauche */
   font-weight: bold; /* Texte en gras */
   text-transform: uppercase; /* Convertir le texte en majuscules */
+  white-space: nowrap; /* Empêche le retour à la ligne */
+  overflow: hidden; /* Cache le texte qui déborde */
+  text-overflow: ellipsis; /* Ajoute des points de suspension */
 }
 
 /* Style des cellules du tableau */
 tbody td {
-  padding: 12px 15px; /* Espacement interne */
+  font-size: 0.85rem;
+  padding: 8px 10px; /* Espacement interne */
   border-bottom: 1px solid #dddddd; /* Bordure inférieure pour séparer les lignes */
+  white-space: nowrap; /* Empêche le retour à la ligne */
+  overflow: hidden; /* Cache le texte qui déborde */
+  text-overflow: ellipsis; /* Ajoute des points de suspension */
 }
 
-/* Style des lignes impaires (optionnel) */
+/* Style des lignes impaires */
 tbody tr:nth-child(odd) {
   background-color: #f9f9f9; /* Couleur de fond pour les lignes impaires */
 }
@@ -38,12 +47,97 @@ tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Style des cellules de la première colonne (optionnel) */
+/* Style des cellules de la première colonne */
 tbody td:first-child {
   font-weight: bold; /* Texte en gras pour la première colonne */
 }
 
-/* Style des cellules de la dernière colonne (optionnel) */
-tbody td:last-child {
-  text-align: right; /* Alignement du texte à droite pour la dernière colonne */
+/* Style des cellules numériques (alignées à droite) */
+td:nth-child(8),
+td:nth-child(9),
+td:nth-child(10),
+td:nth-child(11) {
+  text-align: right; /* Alignement du texte à droite pour les valeurs numériques */
+}
+
+/* Responsive tableau */
+.table-responsive {
+  overflow-x: auto; /* Défilement horizontal si nécessaire */
+  -webkit-overflow-scrolling: touch; /* Défilement fluide sur iOS */
+  margin-bottom: 1rem; /* Marge en bas */
+}
+
+/* Largeurs spécifiques des colonnes */
+th:nth-child(1),
+td:nth-child(1) {
+  width: 7%;
+} /* Date */
+th:nth-child(2),
+td:nth-child(2) {
+  width: 5%;
+} /* Numéro d'ordre */
+th:nth-child(3),
+td:nth-child(3) {
+  width: 8%;
+} /* Nom */
+th:nth-child(4),
+td:nth-child(4) {
+  width: 8%;
+} /* Prénom */
+th:nth-child(5),
+td:nth-child(5) {
+  width: 12%;
+} /* Mail */
+th:nth-child(6),
+td:nth-child(6) {
+  width: 8%;
+} /* Téléphone */
+th:nth-child(7),
+td:nth-child(7) {
+  width: 12%;
+} /* Désignation */
+th:nth-child(8),
+td:nth-child(8) {
+  width: 5%;
+} /* Poids */
+th:nth-child(9),
+td:nth-child(9) {
+  width: 5%;
+} /* Carats */
+th:nth-child(10),
+td:nth-child(10) {
+  width: 8%;
+} /* Prix unitaire */
+th:nth-child(11),
+td:nth-child(11) {
+  width: 8%;
+} /* Montant total */
+th:nth-child(12),
+td:nth-child(12) {
+  width: 6%;
+} /* Lieu */
+th:nth-child(13),
+td:nth-child(13) {
+  width: 7%;
+} /* Vendeur (admin) */
+
+/* Styles pour les écrans de petite taille */
+@media screen and (max-width: 992px) {
+  table {
+    table-layout: auto; /* Revenir au layout auto sur petit écran */
+  }
+
+  /* Ajuster la taille du texte et le padding */
+  thead th,
+  tbody td {
+    padding: 6px 8px;
+    font-size: 0.8rem; /* Encore plus petit sur les petits écrans */
+  }
+}
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100vw;
+  display: block;
 }

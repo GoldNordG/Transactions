@@ -1,14 +1,39 @@
 import axios from "axios";
 import { useForm } from "react-hook-form";
+import { useSession } from "next-auth/react";
+import { useState, useEffect } from "react";
 import styles from "../styles/TransactionForm.module.css";
 
 export default function TransactionForm({ onTransactionAdded }) {
+  const { data: session } = useSession();
+  const [userInfo, setUserInfo] = useState(null);
   const { register, handleSubmit, reset, watch, setError, clearErrors } =
     useForm();
 
   // Observer les champs pour la validation conditionnelle
   const watchPhone = watch("phone");
   const watchEmail = watch("clientMail");
+
+  useEffect(() => {
+    // Récupérer les informations de l'utilisateur si connecté
+    const fetchUserInfo = async () => {
+      if (session?.user?.id) {
+        try {
+          const response = await axios.get(`/api/user`);
+          setUserInfo(response.data);
+        } catch (error) {
+          console.error(
+            "Erreur lors de la récupération des données utilisateur",
+            error
+          );
+        }
+      }
+    };
+
+    if (session) {
+      fetchUserInfo();
+    }
+  }, [session]);
 
   const onSubmit = async (data) => {
     try {
@@ -30,6 +55,11 @@ export default function TransactionForm({ onTransactionAdded }) {
         clearErrors("clientMail");
       }
 
+      // Si c'est un utilisateur d'agence, définir automatiquement la localisation
+      if (session?.user?.role === "agency" && userInfo?.location) {
+        data.location = userInfo.location;
+      }
+
       // Envoyer les données à l'API
       await axios.post("/api/transactions", data);
 
@@ -45,12 +75,16 @@ export default function TransactionForm({ onTransactionAdded }) {
       }
     } catch (error) {
       // Gérer les erreurs
-      console.error("Erreur lors de l’enregistrement de la transaction", error);
+      console.error("Erreur lors de l'enregistrement de la transaction", error);
       alert(
-        "Une erreur est survenue lors de l’enregistrement de la transaction."
+        "Une erreur est survenue lors de l'enregistrement de la transaction."
       );
     }
   };
+
+  if (!session) {
+    return <p>Veuillez vous connecter pour ajouter une transaction.</p>;
+  }
 
   return (
     <div className={styles["form-container"]}>
@@ -65,10 +99,10 @@ export default function TransactionForm({ onTransactionAdded }) {
           />
         </div>
         <div>
-          <label>Numéro d’ordre</label>
+          <label>Numéro d'ordre</label>
           <input
             {...register("orderNumber")}
-            placeholder="Numéro d’ordre"
+            placeholder="Numéro d'ordre"
             type="number"
             required
           />
@@ -144,10 +178,20 @@ export default function TransactionForm({ onTransactionAdded }) {
             required
           />
         </div>
-        <div>
-          <label>Lieu</label>
-          <input {...register("location")} placeholder="Lieu" />
-        </div>
+
+        {/* Montrer le champ de localisation seulement pour les administrateurs */}
+        {session.user.role === "admin" && (
+          <div>
+            <label>Lieu</label>
+            <input {...register("location")} placeholder="Lieu" />
+          </div>
+        )}
+        {session.user.role === "agency" && userInfo?.location && (
+          <div>
+            <label>Lieu</label>
+            <input value={userInfo.location} disabled />
+          </div>
+        )}
 
         <button type="submit">Enregistrer</button>
       </form>
