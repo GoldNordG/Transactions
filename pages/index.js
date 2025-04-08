@@ -36,7 +36,7 @@ export default function HomePage() {
           {session.user.role === "admin" ? (
             <p>Connecté en tant qu'Administrateur | {session.user.email}</p>
           ) : (
-            <p>Connecté en tant qu'Agence {session.user.email}</p>
+            <p>Connecté en tant qu'Agence {session.user.location}</p>
           )}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}

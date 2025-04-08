@@ -20,8 +20,16 @@ async function main() {
   // Créer plusieurs utilisateurs pour différentes agences
   const agencies = [
     { email: "maubeuge@goldnord.fr", location: "Maubeuge" },
-    { email: "Beauvais@goldnord.fr", location: "Beauvais" },
-    { email: "Fourmies@goldnord.fr", location: "Fourmies" },
+    { email: "beauvais@goldnord.fr", location: "Beauvais" },
+    { email: "fourmies@goldnord.fr", location: "Fourmies" },
+    { email: "chaumont@goldnord.fr", location: "Chaumont" },
+    { email: "compiegne@goldnord.fr", location: "Compiègne" },
+    { email: "dourdan@goldnord.fr", location: "Doudan" },
+    { email: "dreux@goldnord.fr", location: "Dreux" },
+    { email: "aurillac@goldnord.fr", location: "Aurillac" },
+    { email: "saint-dizier@goldnord.fr", location: "Saint-Dizier" },
+    { email: "saint-quentin@goldnord.fr", location: "Saint-Quentin" },
+    { email: "puy-en-velay@goldnord.fr", location: "Puy-En-Velay" },
   ];
 
   for (const agency of agencies) {
