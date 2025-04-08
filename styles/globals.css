@@ -154,10 +154,12 @@ main h2 {
 /* Table styles */
 .transaction-list {
   margin-top: 40px;
+  width: 100%;
 }
 
 table {
   width: 100%;
+  min-width: 1200px; /* Assure que le tableau a une largeur minimale */
   border-collapse: collapse;
   font-family: "Roboto", sans-serif;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
@@ -208,6 +210,7 @@ td:nth-child(11) {
 }
 
 .table-responsive {
+  width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   margin-bottom: 1.5rem;
@@ -328,6 +331,11 @@ td:nth-child(11) {
   border-left: 4px solid var(--error-color);
 }
 
+@media screen and (min-width: 1400px) {
+  .container {
+    max-width: 95%;
+  }
+}
 /* Responsive styles */
 @media screen and (max-width: 992px) {
   .form-container form {

@@ -148,45 +148,68 @@ GOLD NORD`;
     res.status(201).json(newTransaction);
   } else if (req.method === "GET") {
     try {
-      // Filtrer les transactions selon le rôle de l'utilisateur
-      let transactions;
+      // Extraire les paramètres de requête pour les filtres
+      const { location, startDate, endDate, carats } = req.query;
 
-      if (session.user.role === "admin") {
-        // L'admin voit toutes les transactions
-        transactions = await prisma.transaction.findMany({
-          include: {
-            user: {
-              select: {
-                email: true,
-                location: true,
-              },
-            },
-          },
-        });
-      } else if (session.user.role === "agency") {
+      // Construire l'objet de filtrage pour Prisma
+      let whereClause = {};
+
+      // Filtrer selon le rôle de l'utilisateur
+      if (session.user.role === "agency") {
         // Récupérer l'utilisateur pour obtenir sa localisation
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
         });
 
-        // L'agence ne voit que ses propres transactions
-        transactions = await prisma.transaction.findMany({
-          where: {
-            location: user.location,
-          },
-          include: {
-            user: {
-              select: {
-                email: true,
-                location: true,
-              },
-            },
-          },
-        });
-      } else {
+        whereClause.location = user.location;
+      } else if (session.user.role !== "admin") {
         // Rôle non reconnu
         return res.status(403).json({ message: "Accès non autorisé" });
       }
+
+      // Ajouter des filtres supplémentaires si spécifiés
+      if (location) {
+        whereClause.location = {
+          contains: location,
+          mode: "insensitive", // Recherche insensible à la casse
+        };
+      }
+
+      if (carats) {
+        whereClause.carats = carats;
+      }
+
+      // Filtre de plage de dates
+      if (startDate || endDate) {
+        whereClause.date = {};
+
+        if (startDate) {
+          whereClause.date.gte = new Date(startDate);
+        }
+
+        if (endDate) {
+          // Ajouter un jour à la date de fin pour inclure toute la journée
+          const endDateTime = new Date(endDate);
+          endDateTime.setDate(endDateTime.getDate() + 1);
+          whereClause.date.lt = endDateTime;
+        }
+      }
+
+      // Exécuter la requête avec les filtres
+      const transactions = await prisma.transaction.findMany({
+        where: whereClause,
+        include: {
+          user: {
+            select: {
+              email: true,
+              location: true,
+            },
+          },
+        },
+        orderBy: {
+          date: "desc",
+        },
+      });
 
       res.status(200).json(transactions);
     } catch (error) {

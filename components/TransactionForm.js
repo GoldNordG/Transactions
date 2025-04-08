@@ -149,7 +149,7 @@ export default function TransactionForm({ onTransactionAdded }) {
           />
         </div>
         <div>
-          <label>Carats</label>
+          <label>Titre (carats)</label>
           <select {...register("carats")} required>
             <option value="">Sélectionner...</option>
             <option value="MET ARG">Métal Argenté</option>
