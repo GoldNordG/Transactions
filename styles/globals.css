@@ -1,143 +1,411 @@
-/* Style général du tableau */
+/* Variables de couleurs basées sur goldnord.fr */
+:root {
+  --gold-primary: #c6a455; /* Or principal */
+  --gold-secondary: #e0c788; /* Or plus clair */
+  --gold-dark: #8f7838; /* Or foncé */
+  --dark-primary: #121212; /* Noir principal */
+  --dark-secondary: #292929; /* Noir secondaire */
+  --light-gray: #f5f5f5; /* Gris clair pour les fonds */
+  --medium-gray: #dddddd; /* Gris moyen pour les bordures */
+  --text-dark: #232323; /* Couleur de texte foncé */
+  --text-light: #ffffff; /* Couleur de texte clair */
+  --error-color: #cf0000; /* Rouge pour les erreurs */
+  --success-color: #007234; /* Vert pour les succès */
+}
+
+/* Reset et styles généraux */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Roboto", "Arial", sans-serif;
+  background-color: var(--light-gray);
+  color: var(--text-dark);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* Header styles */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 0;
+  margin-bottom: 30px;
+  border-bottom: 2px solid var(--gold-primary);
+  background-color: var(--dark-primary);
+  color: var(--text-light);
+  padding: 15px 20px;
+}
+
+header h1 {
+  color: var(--gold-primary);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.user-info {
+  text-align: right;
+  color: var(--text-light);
+}
+
+.logout-button {
+  margin-left: 10px;
+  padding: 8px 15px;
+  background-color: var(--gold-primary);
+  color: var(--dark-primary);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+  background-color: var(--gold-secondary);
+}
+
+/* Main content */
+main {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+main h2 {
+  color: var(--dark-primary);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--gold-primary);
+}
+
+/* Form styles */
+.form-container {
+  margin: 20px 0;
+  padding: 25px;
+  border: 1px solid var(--medium-gray);
+  border-radius: 8px;
+  background-color: var(--light-gray);
+}
+
+.form-container form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.form-container div {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-container label {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--dark-secondary);
+}
+
+.form-container input {
+  padding: 10px;
+  border: 1px solid var(--medium-gray);
+  border-radius: 4px;
+  transition: border-color 0.3s;
+}
+
+.form-container input:focus {
+  border-color: var(--gold-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(198, 164, 85, 0.25);
+}
+
+.form-container input:disabled {
+  background-color: var(--light-gray);
+  cursor: not-allowed;
+}
+
+.form-container button {
+  grid-column: 1 / -1;
+  padding: 12px;
+  margin-top: 10px;
+  background-color: var(--gold-primary);
+  color: var(--text-light);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.form-container button:hover {
+  background-color: var(--gold-dark);
+}
+
+/* Table styles */
+.transaction-list {
+  margin-top: 40px;
+}
+
 table {
-  width: 100%; /* Le tableau prend toute la largeur disponible */
-  border-collapse: collapse; /* Fusionner les bordures des cellules */
-  font-family: Arial, sans-serif; /* Police de caractères */
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Ombre légère pour un effet de profondeur */
-  table-layout: fixed; /* Stabilise la largeur des colonnes */
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "Roboto", sans-serif;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+  table-layout: fixed;
   font-size: 0.85rem;
+  margin-top: 20px;
 }
 
-/* Style de l'en-tête du tableau */
 thead th {
-  background-color: black; /* Couleur de fond de l'en-tête */
-  color: white; /* Couleur du texte */
+  background-color: var(--dark-primary);
+  color: var(--gold-primary);
   font-size: 0.85rem;
-  padding: 8px 10px; /* Espacement interne */
-  text-align: left; /* Alignement du texte à gauche */
-  font-weight: bold; /* Texte en gras */
-  text-transform: uppercase; /* Convertir le texte en majuscules */
-  white-space: nowrap; /* Empêche le retour à la ligne */
-  overflow: hidden; /* Cache le texte qui déborde */
-  text-overflow: ellipsis; /* Ajoute des points de suspension */
+  padding: 12px 15px;
+  text-align: left;
+  font-weight: bold;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Style des cellules du tableau */
 tbody td {
   font-size: 0.85rem;
-  padding: 8px 10px; /* Espacement interne */
-  border-bottom: 1px solid #dddddd; /* Bordure inférieure pour séparer les lignes */
-  white-space: nowrap; /* Empêche le retour à la ligne */
-  overflow: hidden; /* Cache le texte qui déborde */
-  text-overflow: ellipsis; /* Ajoute des points de suspension */
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--medium-gray);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Style des lignes impaires */
 tbody tr:nth-child(odd) {
-  background-color: #f9f9f9; /* Couleur de fond pour les lignes impaires */
+  background-color: var(--light-gray);
 }
 
-/* Style des lignes au survol */
 tbody tr:hover {
-  background-color: #f1f1f1; /* Couleur de fond au survol */
+  background-color: rgba(198, 164, 85, 0.1);
 }
 
-/* Style de la dernière ligne (pas de bordure inférieure) */
 tbody tr:last-child td {
   border-bottom: none;
 }
 
-/* Style des cellules de la première colonne */
-tbody td:first-child {
-  font-weight: bold; /* Texte en gras pour la première colonne */
-}
-
-/* Style des cellules numériques (alignées à droite) */
 td:nth-child(8),
 td:nth-child(9),
 td:nth-child(10),
 td:nth-child(11) {
-  text-align: right; /* Alignement du texte à droite pour les valeurs numériques */
+  text-align: right;
 }
 
-/* Responsive tableau */
 .table-responsive {
-  overflow-x: auto; /* Défilement horizontal si nécessaire */
-  -webkit-overflow-scrolling: touch; /* Défilement fluide sur iOS */
-  margin-bottom: 1rem; /* Marge en bas */
-}
-
-/* Largeurs spécifiques des colonnes */
-th:nth-child(1),
-td:nth-child(1) {
-  width: 7%;
-} /* Date */
-th:nth-child(2),
-td:nth-child(2) {
-  width: 5%;
-} /* Numéro d'ordre */
-th:nth-child(3),
-td:nth-child(3) {
-  width: 8%;
-} /* Nom */
-th:nth-child(4),
-td:nth-child(4) {
-  width: 8%;
-} /* Prénom */
-th:nth-child(5),
-td:nth-child(5) {
-  width: 12%;
-} /* Mail */
-th:nth-child(6),
-td:nth-child(6) {
-  width: 8%;
-} /* Téléphone */
-th:nth-child(7),
-td:nth-child(7) {
-  width: 12%;
-} /* Désignation */
-th:nth-child(8),
-td:nth-child(8) {
-  width: 5%;
-} /* Poids */
-th:nth-child(9),
-td:nth-child(9) {
-  width: 5%;
-} /* Carats */
-th:nth-child(10),
-td:nth-child(10) {
-  width: 8%;
-} /* Prix unitaire */
-th:nth-child(11),
-td:nth-child(11) {
-  width: 8%;
-} /* Montant total */
-th:nth-child(12),
-td:nth-child(12) {
-  width: 6%;
-} /* Lieu */
-th:nth-child(13),
-td:nth-child(13) {
-  width: 7%;
-} /* Vendeur (admin) */
-
-/* Styles pour les écrans de petite taille */
-@media screen and (max-width: 992px) {
-  table {
-    table-layout: auto; /* Revenir au layout auto sur petit écran */
-  }
-
-  /* Ajuster la taille du texte et le padding */
-  thead th,
-  tbody td {
-    padding: 6px 8px;
-    font-size: 0.8rem; /* Encore plus petit sur les petits écrans */
-  }
-}
-.table-responsive {
-  width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  max-width: 100vw;
+  margin-bottom: 1.5rem;
+}
+
+/* Login page styles */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: var(--dark-primary);
+  background-image: linear-gradient(
+      rgba(18, 18, 18, 0.9),
+      rgba(18, 18, 18, 0.9)
+    ),
+    url("/gold-background.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 40px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.login-card h1 {
+  color: var(--gold-primary);
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+
+.login-card h2 {
+  color: var(--dark-primary);
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 20px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
   display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--dark-secondary);
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--medium-gray);
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  border-color: var(--gold-primary);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(198, 164, 85, 0.25);
+}
+
+.error-message {
+  color: var(--error-color);
+  margin-bottom: 20px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.login-card button {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--gold-primary);
+  color: var(--text-light);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.login-card button:hover {
+  background-color: var(--gold-dark);
+}
+
+.login-card button:disabled {
+  background-color: var(--medium-gray);
+  cursor: not-allowed;
+}
+
+/* Messages styles */
+.success-message {
+  background-color: rgba(0, 114, 52, 0.1);
+  color: var(--success-color);
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--success-color);
+}
+
+.error-message {
+  background-color: rgba(207, 0, 0, 0.1);
+  color: var(--error-color);
+  padding: 10px 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  border-left: 4px solid var(--error-color);
+}
+
+/* Responsive styles */
+@media screen and (max-width: 992px) {
+  .form-container form {
+    grid-template-columns: 1fr;
+  }
+
+  header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .user-info {
+    margin-top: 15px;
+    text-align: center;
+  }
+
+  table {
+    table-layout: auto;
+  }
+
+  thead th,
+  tbody td {
+    padding: 8px 10px;
+    font-size: 0.8rem;
+  }
+}
+
+@media screen and (max-width: 576px) {
+  .container {
+    padding: 10px;
+  }
+
+  main {
+    padding: 15px;
+  }
+
+  .form-container {
+    padding: 15px;
+  }
+
+  .login-card {
+    padding: 25px;
+    max-width: 320px;
+    margin: 0 15px;
+  }
+}
+
+/* Thank you page */
+.thank-you-container {
+  text-align: center;
+  padding: 50px 20px;
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.thank-you-container h1 {
+  color: var(--gold-primary);
+  margin-bottom: 20px;
+}
+
+.thank-you-container p {
+  font-size: 18px;
+  color: var(--dark-secondary);
+  margin-bottom: 30px;
+}
+
+.thank-you-container .btn {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: var(--gold-primary);
+  color: var(--text-light);
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.thank-you-container .btn:hover {
+  background-color: var(--gold-dark);
 }

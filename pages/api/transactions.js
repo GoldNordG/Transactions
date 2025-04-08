@@ -75,7 +75,8 @@ export default async function handler(req, res) {
         orderNumber,
         designation,
         weight: parseFloat(weight),
-        carats: parseInt(carats),
+        // Stocker carats comme une chaîne de caractères au lieu d'un nombre
+        carats: carats,
         unitPrice: parseFloat(unitPrice),
         amount: parseFloat(amount),
         location: transactionLocation,

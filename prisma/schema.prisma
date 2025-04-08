@@ -32,7 +32,7 @@ model Transaction {
   orderNumber   String
   designation   String
   weight        Float
-  carats        Int
+  carats        String
   unitPrice     Float
   amount        Float
   location      String?  // Optionnel

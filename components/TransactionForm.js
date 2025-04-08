@@ -2,7 +2,6 @@ import axios from "axios";
 import { useForm } from "react-hook-form";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
-import styles from "../styles/TransactionForm.module.css";
 
 export default function TransactionForm({ onTransactionAdded }) {
   const { data: session } = useSession();
@@ -87,7 +86,7 @@ export default function TransactionForm({ onTransactionAdded }) {
   }
 
   return (
-    <div className={styles["form-container"]}>
+    <div className="form-container">
       <form onSubmit={handleSubmit(onSubmit)}>
         <div>
           <label>Date de la transaction</label>
@@ -151,12 +150,17 @@ export default function TransactionForm({ onTransactionAdded }) {
         </div>
         <div>
           <label>Carats</label>
-          <input
-            {...register("carats")}
-            type="number"
-            placeholder="Carats"
-            required
-          />
+          <select {...register("carats")} required>
+            <option value="">Sélectionner...</option>
+            <option value="MET ARG">Métal Argenté</option>
+            <option value="ARG">Argent</option>
+            <option value="PLAT">Platinium</option>
+            <option value="9">9K</option>
+            <option value="14">14K</option>
+            <option value="18">18K</option>
+            <option value="22">22K</option>
+            <option value="24">24K</option>
+          </select>
         </div>
         <div>
           <label>Prix unitaire (EUR)</label>
