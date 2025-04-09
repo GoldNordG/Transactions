@@ -1,13 +1,26 @@
 import axios from "axios";
 import { useForm } from "react-hook-form";
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function TransactionForm({ onTransactionAdded }) {
   const { data: session } = useSession();
   const [userInfo, setUserInfo] = useState(null);
-  const { register, handleSubmit, reset, watch, setError, clearErrors } =
-    useForm();
+  const [isUploading, setIsUploading] = useState(false);
+  const [jewelryPreview, setJewelryPreview] = useState(null);
+  const [paymentPreview, setPaymentPreview] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setError,
+    clearErrors,
+    setValue,
+  } = useForm();
+  const jewelryFileInputRef = useRef(null);
+  const paymentFileInputRef = useRef(null);
 
   // Observer les champs pour la validation conditionnelle
   const watchPhone = watch("phone");
@@ -34,8 +47,36 @@ export default function TransactionForm({ onTransactionAdded }) {
     }
   }, [session]);
 
+  // Gérer le téléchargement de la photo du bijou
+  const handleJewelryPhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Prévisualisation de l'image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setJewelryPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Gérer le téléchargement de la preuve de paiement
+  const handlePaymentProofUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Prévisualisation de l'image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPaymentPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const onSubmit = async (data) => {
     try {
+      setIsUploading(true);
+
       // Validation conditionnelle : au moins un des deux champs doit être rempli
       if (!data.phone && !data.clientMail) {
         setError("phone", {
@@ -48,6 +89,7 @@ export default function TransactionForm({ onTransactionAdded }) {
           message:
             "Veuillez remplir au moins un des champs : Téléphone ou Adresse mail.",
         });
+        setIsUploading(false);
         return;
       } else {
         clearErrors("phone");
@@ -59,6 +101,46 @@ export default function TransactionForm({ onTransactionAdded }) {
         data.location = userInfo.location;
       }
 
+      // Télécharger les fichiers s'ils existent
+      let jewelryPhotoUrl = null;
+      let paymentProofUrl = null;
+
+      if (jewelryFileInputRef.current?.files?.[0]) {
+        const jewelryFormData = new FormData();
+        jewelryFormData.append("file", jewelryFileInputRef.current.files[0]);
+        jewelryFormData.append("fileType", "jewelry");
+        jewelryFormData.append(
+          "location",
+          data.location || userInfo?.location || "unknown"
+        );
+
+        const jewelryUploadResponse = await axios.post(
+          "/api/upload",
+          jewelryFormData
+        );
+        jewelryPhotoUrl = jewelryUploadResponse.data.fileUrl;
+      }
+
+      if (paymentFileInputRef.current?.files?.[0]) {
+        const paymentFormData = new FormData();
+        paymentFormData.append("file", paymentFileInputRef.current.files[0]);
+        paymentFormData.append("fileType", "payment");
+        paymentFormData.append(
+          "location",
+          data.location || userInfo?.location || "unknown"
+        );
+
+        const paymentUploadResponse = await axios.post(
+          "/api/upload",
+          paymentFormData
+        );
+        paymentProofUrl = paymentUploadResponse.data.fileUrl;
+      }
+
+      // Ajouter les URLs des fichiers aux données de la transaction
+      data.jewelryPhotoUrl = jewelryPhotoUrl;
+      data.paymentProofUrl = paymentProofUrl;
+
       // Envoyer les données à l'API
       await axios.post("/api/transactions", data);
 
@@ -67,6 +149,8 @@ export default function TransactionForm({ onTransactionAdded }) {
 
       // Réinitialiser le formulaire après soumission
       reset();
+      setJewelryPreview(null);
+      setPaymentPreview(null);
 
       // Émettre un événement pour informer le composant parent
       if (onTransactionAdded) {
@@ -78,6 +162,8 @@ export default function TransactionForm({ onTransactionAdded }) {
       alert(
         "Une erreur est survenue lors de l'enregistrement de la transaction."
       );
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -203,6 +289,41 @@ export default function TransactionForm({ onTransactionAdded }) {
           </select>
         </div>
 
+        {/* Section photo du bijou */}
+        <div className="file-upload-container">
+          <label>Photo du bijou</label>
+          <input
+            type="file"
+            accept="image/*"
+            ref={jewelryFileInputRef}
+            onChange={handleJewelryPhotoUpload}
+          />
+          {jewelryPreview && (
+            <div className="image-preview">
+              <img src={jewelryPreview} alt="Prévisualisation du bijou" />
+            </div>
+          )}
+        </div>
+
+        {/* Section preuve de paiement */}
+        <div className="file-upload-container">
+          <label>Preuve de paiement (RIB/Chèque)</label>
+          <input
+            type="file"
+            accept="image/*"
+            ref={paymentFileInputRef}
+            onChange={handlePaymentProofUpload}
+          />
+          {paymentPreview && (
+            <div className="image-preview">
+              <img
+                src={paymentPreview}
+                alt="Prévisualisation de la preuve de paiement"
+              />
+            </div>
+          )}
+        </div>
+
         {/* Montrer le champ de localisation seulement pour les administrateurs */}
         {session.user.role === "admin" && (
           <div>
@@ -217,8 +338,27 @@ export default function TransactionForm({ onTransactionAdded }) {
           </div>
         )}
 
-        <button type="submit">Enregistrer</button>
+        <button type="submit" disabled={isUploading}>
+          {isUploading ? "Téléchargement en cours..." : "Enregistrer"}
+        </button>
       </form>
+
+      <style jsx>{`
+        .file-upload-container {
+          margin-bottom: 15px;
+        }
+        .image-preview {
+          margin-top: 10px;
+          max-width: 300px;
+        }
+        .image-preview img {
+          width: 100%;
+          height: auto;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          padding: 5px;
+        }
+      `}</style>
     </div>
   );
 }

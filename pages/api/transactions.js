@@ -36,6 +36,8 @@ export default async function handler(req, res) {
       amount,
       paiement,
       location,
+      jewelryPhotoUrl,
+      paymentProofUrl,
     } = req.body;
 
     // Valider les données
@@ -72,7 +74,7 @@ export default async function handler(req, res) {
       transactionLocation = user.location;
     }
 
-    // Ajouter la nouvelle transaction avec l'ID utilisateur de la session
+    // Ajouter la nouvelle transaction avec l'ID utilisateur de la session et les URLs des photos
     const newTransaction = await prisma.transaction.create({
       data: {
         date: new Date(date),
@@ -92,6 +94,8 @@ export default async function handler(req, res) {
         paiement,
         location: transactionLocation,
         userId: session.user.id,
+        jewelryPhotoUrl: jewelryPhotoUrl || null,
+        paymentProofUrl: paymentProofUrl || null,
       },
     });
 
@@ -106,7 +110,7 @@ export default async function handler(req, res) {
 
     // Envoyer la facture à l'admin
     const adminEmail = "goldnord.digital@gmail.com";
-    const adminSubject = `Nouvelle transaction : ${orderNumber} à ${location} le ${formattedDate}`;
+    const adminSubject = `Nouvelle transaction : ${orderNumber} à ${transactionLocation} le ${formattedDate}`;
     const adminText = `
 Une nouvelle transaction a été enregistrée.
 
