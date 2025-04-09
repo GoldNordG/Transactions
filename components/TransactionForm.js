@@ -107,18 +107,18 @@ export default function TransactionForm({ onTransactionAdded }) {
           />
         </div>
         <div>
-          <label>Nom du client</label>
+          <label>Numéro de Facture</label>
           <input
-            {...register("clientName")}
-            placeholder="Nom du client"
+            {...register("factureNumber")}
+            placeholder="Numéro de Facture"
             required
           />
         </div>
         <div>
-          <label>Prenom du client</label>
+          <label>Nom du client</label>
           <input
-            {...register("clientSurname")}
-            placeholder="Prenom du client"
+            {...register("clientName")}
+            placeholder="Nom du client"
             required
           />
         </div>
@@ -129,6 +129,18 @@ export default function TransactionForm({ onTransactionAdded }) {
         <div>
           <label>Téléphone</label>
           <input {...register("phone")} placeholder="Téléphone" />
+        </div>
+        <div>
+          <label>Adresse</label>
+          <input {...register("adresse")} placeholder="Adresse" />
+        </div>
+        <div>
+          <label>Code postal</label>
+          <input {...register("codePostal")} placeholder="code Postal" />
+        </div>
+        <div>
+          <label>Ville</label>
+          <input {...register("ville")} placeholder="Ville" />
         </div>
         <div>
           <label>Désignation du bien vendu</label>
@@ -152,14 +164,14 @@ export default function TransactionForm({ onTransactionAdded }) {
           <label>Titre (carats)</label>
           <select {...register("carats")} required>
             <option value="">Sélectionner...</option>
-            <option value="MET ARG">Métal Argenté</option>
-            <option value="ARG">Argent</option>
-            <option value="PLAT">Platinium</option>
-            <option value="9">9K</option>
-            <option value="14">14K</option>
-            <option value="18">18K</option>
-            <option value="22">22K</option>
             <option value="24">24K</option>
+            <option value="22">22K</option>
+            <option value="18">18K</option>
+            <option value="14">14K</option>
+            <option value="9">9K</option>
+            <option value="ARG">Argent</option>
+            <option value="MET ARG">Métal Argenté</option>
+            <option value="PLAT">Platinium</option>
           </select>
         </div>
         <div>
@@ -182,17 +194,25 @@ export default function TransactionForm({ onTransactionAdded }) {
             required
           />
         </div>
+        <div>
+          <label>Mode de paiement</label>
+          <select {...register("paiement")} required>
+            <option value="">Sélectionner...</option>
+            <option value="cheque">Chèque</option>
+            <option value="virement">Virement</option>
+          </select>
+        </div>
 
         {/* Montrer le champ de localisation seulement pour les administrateurs */}
         {session.user.role === "admin" && (
           <div>
-            <label>Lieu</label>
-            <input {...register("location")} placeholder="Lieu" />
+            <label>Agence</label>
+            <input {...register("location")} placeholder="Agence" />
           </div>
         )}
         {session.user.role === "agency" && userInfo?.location && (
           <div>
-            <label>Lieu</label>
+            <label>Agence</label>
             <input value={userInfo.location} disabled />
           </div>
         )}

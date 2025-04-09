@@ -22,15 +22,19 @@ export default async function handler(req, res) {
     const {
       date,
       clientName,
-      clientSurname,
+      factureNumber,
       clientMail,
       phone,
+      adresse,
+      codePostal,
+      ville,
       orderNumber,
       designation,
       weight,
       carats,
       unitPrice,
       amount,
+      paiement,
       location,
     } = req.body;
 
@@ -38,13 +42,17 @@ export default async function handler(req, res) {
     if (
       !date ||
       !clientName ||
-      !clientSurname ||
+      !factureNumber ||
       !orderNumber ||
       !designation ||
       !weight ||
+      !adresse ||
+      !codePostal ||
+      !ville ||
       !carats ||
       !unitPrice ||
-      !amount
+      !amount ||
+      !paiement
     ) {
       return res.status(400).json({
         message: "Tous les champs obligatoires doivent être remplis.",
@@ -69,16 +77,19 @@ export default async function handler(req, res) {
       data: {
         date: new Date(date),
         clientName,
-        clientSurname,
+        factureNumber,
         clientMail: clientMail || null,
         phone: phone || null,
+        adresse,
+        codePostal,
+        ville,
         orderNumber,
         designation,
         weight: parseFloat(weight),
-        // Stocker carats comme une chaîne de caractères au lieu d'un nombre
         carats: carats,
         unitPrice: parseFloat(unitPrice),
         amount: parseFloat(amount),
+        paiement,
         location: transactionLocation,
         userId: session.user.id,
       },
@@ -101,7 +112,7 @@ Une nouvelle transaction a été enregistrée.
 
 Détails de la transaction :
 - Date : ${formattedDate}
-- Client : ${clientName} ${clientSurname}
+- Client : ${clientName}
 - E-mail : ${clientMail || "Non spécifié"}
 - Téléphone : ${phone || "Non spécifié"}
 - Numéro d'ordre : ${orderNumber}
@@ -111,6 +122,7 @@ Détails de la transaction :
 - Prix unitaire : ${unitPrice} €
 - Montant total : ${amount} €
 - Lieu : ${transactionLocation || "Non spécifié"}
+- Mode de paiement : ${paiement}
 - Vendeur : ${session.user.email}
 `;
 
@@ -129,7 +141,7 @@ Détails de la transaction :
 
 Conformément aux dispositions légales en vigueur, nous vous transmettons ci-joint le formulaire de rétractation relatif à votre commande ${orderNumber}.
 
-Si vous souhaitez exercer votre droit de rétractation, nous vous invitons à compléter ce formulaire et à nous le retourner dans un délai de 14 jours à compter de la réception de votre commande.
+Si vous souhaitez exercer votre droit de rétractation, nous vous invitons à compléter ce formulaire et à nous le retourner dans un délai de 48 Heures à compter de la réception de votre commande.
 
 Pour toute question ou assistance, notre service client reste à votre disposition.
 

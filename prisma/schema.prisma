@@ -26,16 +26,20 @@ model Transaction {
   id            Int      @id @default(autoincrement())
   date          DateTime
   clientName    String
-  clientSurname String
+  factureNumber String   @default("N/A") // Ajout d'une valeur par défaut
   clientMail    String?  // Optionnel
   phone         String?  // Optionnel
+  adresse       String
+  codePostal    String
+  ville         String
   orderNumber   String
   designation   String
   weight        Float
   carats        String
   unitPrice     Float
   amount        Float
+  paiement      String   @default("non spécifié") // Ajout d'une valeur par défaut
   location      String?  // Optionnel
   userId        Int?     // Foreign key to User Optionnel
-  user          User?     @relation(fields: [userId], references: [id]) // Relation to User Optionnel
+  user          User?    @relation(fields: [userId], references: [id]) // Relation à User
 }

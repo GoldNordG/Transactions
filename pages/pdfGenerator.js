@@ -25,16 +25,16 @@ export function generatePDF(transaction, type = "facture") {
 
       // Informations du vendeur
       doc.fontSize(16).text("Vendeur (professionnel) :", { underline: true });
-      doc.text(`Nom de l'entreprise : [Nom]`);
+      doc.text(`Nom de l'entreprise : GOLDNORD`);
       doc.text(`Adresse : [Adresse complète]`);
-      doc.text(`SIRET : [Numéro]`);
-      doc.text(`Téléphone : [Numéro]`);
-      doc.text(`E-mail : [Adresse]`);
+      doc.text(`SIRET : 492 735 741 00026- RCS 411 034 549`);
+      doc.text(`Téléphone : 03 27 59 80 76`);
+      doc.text(`E-mail : administrateur@goldnord.fr`);
       doc.moveDown();
 
       // Informations de l'acheteur
       doc.fontSize(16).text("Acheteur (client) :", { underline: true });
-      doc.text(`Nom : ${transaction.clientName} ${transaction.clientSurname}`);
+      doc.text(`Nom : Mr/Mme ${transaction.clientName}`);
       doc.text(`Téléphone : ${transaction.phone || "Non spécifié"}`);
       doc.text(`E-mail : ${transaction.clientMail || "Non spécifié"}`);
       doc.moveDown();
@@ -52,7 +52,7 @@ export function generatePDF(transaction, type = "facture") {
 
       // Informations supplémentaires
       doc.text(`Date de la transaction : ${formattedDate}`);
-      doc.text(`Mode de paiement : [Espèces / Virement / Chèque]`);
+      doc.text(`Mode de paiement : ${transaction.paiement}`);
       doc.text(`Facture n° : ${transaction.orderNumber}`);
       doc.text(`Lieu : ${transaction.location || "Non spécifié"}`);
       doc.moveDown();
@@ -62,11 +62,11 @@ export function generatePDF(transaction, type = "facture") {
       doc.moveDown();
 
       doc.text("À l'attention de :");
-      doc.text(`[Nom de l'entreprise]`);
+      doc.text(`GOLDNORD`);
       doc.text(`[Adresse complète]`);
       doc.moveDown();
       doc.text(
-        `Je soussigné(e) ${transaction.clientName} ${transaction.clientSurname}, demeurant à [Adresse complète], vous informe par la présente que je me rétracte du contrat de vente suivant :`
+        `Je soussigné(e) Mr/Mme ${transaction.clientName}, demeurant au ${transaction.adresse} ${transaction.codePostal} ${transaction.ville}, vous informe par la présente que je me rétracte du contrat de vente suivant :`
       );
       doc.moveDown();
       doc.text(`- Nature du bien : ${transaction.designation}`);

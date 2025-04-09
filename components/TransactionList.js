@@ -119,7 +119,7 @@ export default function TransactionList() {
                 <th>Date</th>
                 <th>Ordre</th>
                 <th>Nom du client</th>
-                <th>Prénom du client</th>
+                <th>Facture n°</th>
                 <th>Mail</th>
                 <th>Téléphone</th>
                 <th>Désignation</th>
@@ -128,6 +128,7 @@ export default function TransactionList() {
                 <th>Prix unitaire (EUR)</th>
                 <th>Montant total (EUR)</th>
                 <th>Lieu</th>
+                <th>Mode de paiement</th>
                 {session?.user?.role === "admin" && <th>Vendeur</th>}
               </tr>
             </thead>
@@ -137,7 +138,7 @@ export default function TransactionList() {
                   <td>{formatDate(transaction.date)}</td>
                   <td>{transaction.orderNumber}</td>
                   <td>{transaction.clientName}</td>
-                  <td>{transaction.clientSurname}</td>
+                  <td>{transaction.factureNumber}</td>
                   <td>{transaction.clientMail || "Non spécifié"}</td>
                   <td>{transaction.phone || "Non spécifié"}</td>
                   <td>{transaction.designation}</td>
@@ -146,6 +147,7 @@ export default function TransactionList() {
                   <td>{transaction.unitPrice} €</td>
                   <td>{transaction.amount} €</td>
                   <td>{transaction.location || "Non spécifié"}</td>
+                  <td>{transaction.paiement}</td>
                   {session?.user?.role === "admin" && (
                     <td>{transaction.user?.email || "Utilisateur inconnu"}</td>
                   )}
