@@ -24,7 +24,7 @@ async function main() {
     { email: "fourmies@goldnord.fr", location: "Fourmies" },
     { email: "chaumont@goldnord.fr", location: "Chaumont" },
     { email: "compiegne@goldnord.fr", location: "Compiègne" },
-    { email: "dourdan@goldnord.fr", location: "Doudan" },
+    { email: "dourdan@goldnord.fr", location: "Dourdan" },
     { email: "dreux@goldnord.fr", location: "Dreux" },
     { email: "aurillac@goldnord.fr", location: "Aurillac" },
     { email: "saint-dizier@goldnord.fr", location: "Saint-Dizier" },

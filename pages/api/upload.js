@@ -207,6 +207,8 @@ export default async function handler(req, res) {
     // Déterminer le type de fichier et l'agence
     const fileType = fields.fileType?.[0] || "unknown";
     const location = fields.location?.[0] || "unknown";
+    const orderNumber = fields.orderNumber?.[0] || "";
+    const clientName = fields.clientName?.[0] || "";
 
     // Authentifier Google Drive
     const drive = await authenticateGoogleDrive();
@@ -214,16 +216,27 @@ export default async function handler(req, res) {
     // Obtenir l'ID du dossier pour cette agence et ce type de fichier
     const folderId = await getFolderIdByAgency(drive, location, fileType);
 
-    // Préparer le nom du fichier avec un identifiant unique
+    // Préparer le nom du fichier avec les informations du client et de la commande
     const fileExtension = path.extname(file.originalFilename);
-    const uniqueFileName = `${fileType}_${Date.now()}_${uuidv4().slice(
-      0,
-      8
-    )}${fileExtension}`;
+
+    // Format: [Numéro d'ordre]_[Nom client]_[Agence]_[Type de fichier]_[Horodatage]
+    let fileName = "";
+
+    if (orderNumber && clientName) {
+      // Si nous avons le numéro d'ordre et le nom du client, les utiliser
+      const safeClientName = clientName.replace(/[^a-zA-Z0-9]/g, "_"); // Remplacer les caractères spéciaux
+      fileName = `${orderNumber}_${safeClientName}_${location}_${fileType}${fileExtension}`;
+    } else {
+      // Sinon, utiliser l'ancien format avec un identifiant unique
+      fileName = `${fileType}_${Date.now()}_${uuidv4().slice(
+        0,
+        8
+      )}${fileExtension}`;
+    }
 
     // Télécharger le fichier sur Google Drive
     const fileMetadata = {
-      name: uniqueFileName,
+      name: fileName,
       parents: [folderId],
     };
 

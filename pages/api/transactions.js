@@ -19,99 +19,150 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
-    const {
-      date,
-      clientName,
-      factureNumber,
-      clientMail,
-      phone,
-      adresse,
-      codePostal,
-      ville,
-      orderNumber,
-      designation,
-      weight,
-      carats,
-      unitPrice,
-      amount,
-      paiement,
-      location,
-      jewelryPhotoUrl,
-      paymentProofUrl,
-    } = req.body;
-
-    // Valider les données
-    if (
-      !date ||
-      !clientName ||
-      !factureNumber ||
-      !orderNumber ||
-      !designation ||
-      !weight ||
-      !adresse ||
-      !codePostal ||
-      !ville ||
-      !carats ||
-      !unitPrice ||
-      !amount ||
-      !paiement
-    ) {
-      return res.status(400).json({
-        message: "Tous les champs obligatoires doivent être remplis.",
-      });
-    }
-
-    // Définir la localisation en fonction du rôle de l'utilisateur
-    let transactionLocation = location;
-
-    // Si c'est un utilisateur d'agence, utiliser sa localisation
-    if (session.user.role === "agency") {
-      // Récupérer l'information complète de l'utilisateur
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-      });
-
-      transactionLocation = user.location;
-    }
-
-    // Ajouter la nouvelle transaction avec l'ID utilisateur de la session et les URLs des photos
-    const newTransaction = await prisma.transaction.create({
-      data: {
-        date: new Date(date),
+    try {
+      const {
+        date,
         clientName,
         factureNumber,
-        clientMail: clientMail || null,
-        phone: phone || null,
+        clientMail,
+        phone,
         adresse,
         codePostal,
         ville,
         orderNumber,
-        designation,
-        weight: parseFloat(weight),
-        carats: carats,
-        unitPrice: parseFloat(unitPrice),
-        amount: parseFloat(amount),
+        amount,
         paiement,
-        location: transactionLocation,
-        userId: session.user.id,
-        jewelryPhotoUrl: jewelryPhotoUrl || null,
-        paymentProofUrl: paymentProofUrl || null,
-      },
-    });
+        location,
+        jewelryPhotoUrl,
+        paymentProofUrl,
+        items, // Le tableau d'items du formulaire
+      } = req.body;
 
-    // Générer la facture pour l'admin
-    const facturePDF = await generatePDF(newTransaction, "facture");
+      // Valider les données de base
+      if (
+        !date ||
+        !clientName ||
+        !factureNumber ||
+        !orderNumber ||
+        !adresse ||
+        !codePostal ||
+        !ville ||
+        !amount ||
+        !paiement ||
+        !items ||
+        !Array.isArray(items) ||
+        items.length === 0
+      ) {
+        return res.status(400).json({
+          message: "Tous les champs obligatoires doivent être remplis.",
+        });
+      }
 
-    // Générer le formulaire de rétractation pour le client
-    const retractationPDF = await generatePDF(newTransaction, "retractation");
+      // Vérifier que chaque item contient les informations nécessaires
+      for (const item of items) {
+        if (
+          !item.designation ||
+          !item.carats ||
+          !item.weight ||
+          !item.unitPrice
+        ) {
+          return res.status(400).json({
+            message: "Informations manquantes pour un ou plusieurs articles",
+          });
+        }
+      }
 
-    // Formater la date
-    const formattedDate = format(new Date(date), "dd/MM/yyyy", { locale: fr });
+      // Définir la localisation en fonction du rôle de l'utilisateur
+      let transactionLocation = location;
 
-    // Envoyer la facture à l'admin
-    const adminEmail = "goldnord.digital@gmail.com";
-    const adminSubject = `Nouvelle transaction : ${orderNumber} à ${transactionLocation} le ${formattedDate}`;
-    const adminText = `
+      // Si c'est un utilisateur d'agence, utiliser sa localisation
+      if (session.user.role === "agency") {
+        // Récupérer l'information complète de l'utilisateur
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+        });
+
+        transactionLocation = user.location;
+      }
+
+      // Calculer le poids total
+      const totalWeight = items.reduce(
+        (sum, item) => sum + parseFloat(item.weight),
+        0
+      );
+
+      const newTransaction = await prisma.transaction.create({
+        data: {
+          date: new Date(date),
+          clientName,
+          factureNumber,
+          clientMail: clientMail || null,
+          phone: phone || null,
+          adresse,
+          codePostal,
+          ville,
+          orderNumber,
+          // Pour la compatibilité avec le code existant, on utilise la désignation du premier item
+          // ou une concaténation des désignations
+          designation:
+            items.length === 1
+              ? items[0].designation
+              : items.map((i) => i.designation).join(", "),
+          weight: totalWeight,
+          // No carats and unitPrice fields in Transaction model
+          amount: parseFloat(amount),
+          paiement,
+          location: transactionLocation,
+          userId: session.user.id,
+          jewelryPhotoUrl: jewelryPhotoUrl || null,
+          paymentProofUrl: paymentProofUrl || null,
+          // Ajouter les items en relation
+          items: {
+            create: items.map((item) => ({
+              designation: item.designation,
+              carats: item.carats,
+              weight: parseFloat(item.weight),
+              unitPrice: parseFloat(item.unitPrice),
+              subtotal: parseFloat(item.weight) * parseFloat(item.unitPrice),
+            })),
+          },
+        },
+        include: {
+          items: true, // Inclure les items dans la réponse
+        },
+      });
+
+      // Générer la facture pour l'admin
+      const facturePDF = await generatePDF(newTransaction, "facture");
+
+      // Générer le formulaire de rétractation pour le client
+      const retractationPDF = await generatePDF(newTransaction, "retractation");
+
+      // Formater la date
+      const formattedDate = format(new Date(date), "dd/MM/yyyy", {
+        locale: fr,
+      });
+
+      // Envoyer la facture à l'admin
+      const adminEmail = "goldnord.digital@gmail.com";
+      const adminSubject = `Nouvelle transaction : ${orderNumber} à ${transactionLocation} le ${formattedDate}`;
+
+      // Créer le texte pour chaque item
+      const itemsText = items
+        .map(
+          (item) => `
+  - Désignation : ${item.designation}
+  - Poids : ${item.weight} g
+  - Carats : ${item.carats}
+  - Prix unitaire : ${item.unitPrice} €
+  - Sous-total : ${(
+    parseFloat(item.weight) * parseFloat(item.unitPrice)
+  ).toFixed(2)} €
+      `
+        )
+        .join("\n");
+
+      const adminText = `
 Une nouvelle transaction a été enregistrée.
 
 Détails de la transaction :
@@ -120,28 +171,28 @@ Détails de la transaction :
 - E-mail : ${clientMail || "Non spécifié"}
 - Téléphone : ${phone || "Non spécifié"}
 - Numéro d'ordre : ${orderNumber}
-- Désignation : ${designation}
-- Poids : ${weight} g
-- Carats : ${carats}
-- Prix unitaire : ${unitPrice} €
-- Montant total : ${amount} €
 - Lieu : ${transactionLocation || "Non spécifié"}
 - Mode de paiement : ${paiement}
 - Vendeur : ${session.user.email}
+
+Articles :
+${itemsText}
+
+Total : ${amount} €
 `;
 
-    await sendEmail(
-      adminEmail,
-      adminSubject,
-      adminText,
-      facturePDF,
-      `facture_${orderNumber}.pdf`
-    );
+      await sendEmail(
+        adminEmail,
+        adminSubject,
+        adminText,
+        facturePDF,
+        `facture_${orderNumber}.pdf`
+      );
 
-    // Envoyer le formulaire de rétractation au client si l'email est fourni
-    if (clientMail) {
-      const clientSubject = "Votre formulaire de rétractation";
-      const clientText = `Cher(e) ${clientName},
+      // Envoyer le formulaire de rétractation au client si l'email est fourni
+      if (clientMail) {
+        const clientSubject = "Votre formulaire de rétractation";
+        const clientText = `Cher(e) ${clientName},
 
 Conformément aux dispositions légales en vigueur, nous vous transmettons ci-joint le formulaire de rétractation relatif à votre commande ${orderNumber}.
 
@@ -152,16 +203,23 @@ Pour toute question ou assistance, notre service client reste à votre dispositi
 Cordialement,
 GOLD NORD`;
 
-      await sendEmail(
-        clientMail,
-        clientSubject,
-        clientText,
-        retractationPDF,
-        `retractation_${orderNumber}.pdf`
-      );
-    }
+        await sendEmail(
+          clientMail,
+          clientSubject,
+          clientText,
+          retractationPDF,
+          `retractation_${orderNumber}.pdf`
+        );
+      }
 
-    res.status(201).json(newTransaction);
+      res.status(201).json(newTransaction);
+    } catch (error) {
+      console.error("Erreur lors de la création de la transaction:", error);
+      res.status(500).json({
+        message: "Erreur lors de l'enregistrement de la transaction",
+        error: error.message,
+      });
+    }
   } else if (req.method === "GET") {
     try {
       // Extraire les paramètres de requête pour les filtres
@@ -192,7 +250,12 @@ GOLD NORD`;
       }
 
       if (carats) {
-        whereClause.carats = carats;
+        // Correct approach: search only within items since carats is no longer in Transaction
+        whereClause.items = {
+          some: {
+            carats,
+          },
+        };
       }
 
       // Filtre de plage de dates
@@ -221,6 +284,7 @@ GOLD NORD`;
               location: true,
             },
           },
+          items: true, // Inclure les items
         },
         orderBy: {
           date: "desc",

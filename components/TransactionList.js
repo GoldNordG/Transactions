@@ -9,6 +9,10 @@ export default function TransactionList() {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({});
   const { data: session } = useSession();
+  // État pour la modal d'image
+  const [selectedImage, setSelectedImage] = useState(null);
+  // État pour la modal de détails de transaction
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   const fetchTransactions = async (queryParams = {}) => {
     try {
@@ -59,6 +63,39 @@ export default function TransactionList() {
       month: "2-digit",
       year: "numeric",
     });
+  };
+
+  // Ouvrir l'image en grand
+  const openImageModal = (imageUrl) => {
+    setSelectedImage(imageUrl);
+  };
+
+  // Fermer l'image en grand
+  const closeImageModal = () => {
+    setSelectedImage(null);
+  };
+
+  // Ouvrir la modal de détails
+  const openDetailsModal = (transaction) => {
+    setSelectedTransaction(transaction);
+  };
+
+  // Fermer la modal de détails
+  const closeDetailsModal = () => {
+    setSelectedTransaction(null);
+  };
+
+  // Extraire l'ID Google Drive de l'URL pour créer une URL de miniature
+  const getThumbnailUrl = (url) => {
+    if (!url) return null;
+
+    // Extraire l'ID du fichier Google Drive de l'URL
+    const match = url.match(/\/d\/([^/]+)/);
+    if (match && match[1]) {
+      // Utiliser l'API Google Drive pour les miniatures
+      return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`;
+    }
+    return url;
   };
 
   // Calculer les totaux pour les transactions affichées
@@ -113,48 +150,304 @@ export default function TransactionList() {
         <p>Aucune transaction à afficher.</p>
       ) : (
         <div className="table-responsive">
-          <table>
+          <table className="transaction-table">
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Ordre</th>
-                <th>Nom du client</th>
                 <th>Facture n°</th>
-                <th>Mail</th>
-                <th>Téléphone</th>
-                <th>Désignation</th>
-                <th>Poids (g)</th>
+                <th>Nom du client</th>
+                <th>Ordre n°</th>
                 <th>Carats</th>
-                <th>Prix unitaire (EUR)</th>
-                <th>Montant total (EUR)</th>
+                <th>Poids (g)</th>
+                <th>Prix au gramme (EUR)</th>
+                <th>Total (EUR)</th>
                 <th>Lieu</th>
-                <th>Mode de paiement</th>
+                <th>Paiement</th>
+                <th>Photo Bijou</th>
+                <th>RIB/Cheque</th>
                 {session?.user?.role === "admin" && <th>Vendeur</th>}
+                <th>Informations</th> {/* Nouvelle colonne pour le bouton */}
               </tr>
             </thead>
             <tbody>
-              {transactions.map((transaction) => (
-                <tr key={transaction.id}>
-                  <td>{formatDate(transaction.date)}</td>
-                  <td>{transaction.orderNumber}</td>
-                  <td>{transaction.clientName}</td>
-                  <td>{transaction.factureNumber}</td>
-                  <td>{transaction.clientMail || "Non spécifié"}</td>
-                  <td>{transaction.phone || "Non spécifié"}</td>
-                  <td>{transaction.designation}</td>
-                  <td>{transaction.weight} g</td>
-                  <td>{transaction.carats}</td>
-                  <td>{transaction.unitPrice} €</td>
-                  <td>{transaction.amount} €</td>
-                  <td>{transaction.location || "Non spécifié"}</td>
-                  <td>{transaction.paiement}</td>
-                  {session?.user?.role === "admin" && (
-                    <td>{transaction.user?.email || "Utilisateur inconnu"}</td>
-                  )}
-                </tr>
-              ))}
+              {transactions.map((transaction) => {
+                // Récupérer le premier item ou utiliser des valeurs par défaut
+                const firstItem =
+                  transaction.items && transaction.items.length > 0
+                    ? transaction.items[0]
+                    : { carats: "", unitPrice: 0 };
+
+                return (
+                  <tr key={transaction.id}>
+                    <td>{formatDate(transaction.date)}</td>
+                    <td>{transaction.factureNumber}</td>
+                    <td>{transaction.clientName}</td>
+                    <td>{transaction.orderNumber}</td>
+                    <td>
+                      {transaction.items && transaction.items.length > 0
+                        ? transaction.items.map((item, i) => (
+                            <div key={i} className="item-info">
+                              {item.carats}
+                              {i < transaction.items.length - 1 && <hr />}
+                            </div>
+                          ))
+                        : "-"}
+                    </td>
+                    <td>
+                      {transaction.items && transaction.items.length > 0
+                        ? transaction.items.map((item, i) => (
+                            <div key={i} className="item-info">
+                              {item.weight} g
+                              {i < transaction.items.length - 1 && <hr />}
+                            </div>
+                          ))
+                        : "-"}
+                    </td>
+                    <td>
+                      {transaction.items && transaction.items.length > 0
+                        ? transaction.items.map((item, i) => (
+                            <div key={i} className="item-info">
+                              {item.unitPrice} €
+                              {i < transaction.items.length - 1 && <hr />}
+                            </div>
+                          ))
+                        : "-"}
+                    </td>
+                    <td>{transaction.amount} €</td>
+                    <td>{transaction.location || "Non spécifié"}</td>
+                    <td>{transaction.paiement}</td>
+                    <td>
+                      {transaction.jewelryPhotoUrl ? (
+                        <div className="thumbnail-container">
+                          <img
+                            src={getThumbnailUrl(transaction.jewelryPhotoUrl)}
+                            alt="Photo bijou"
+                            className="thumbnail"
+                            onClick={() =>
+                              openImageModal(transaction.jewelryPhotoUrl)
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </td>
+                    <td>
+                      {transaction.paymentProofUrl ? (
+                        <div className="thumbnail-container">
+                          <img
+                            src={getThumbnailUrl(transaction.paymentProofUrl)}
+                            alt="Preuve paiement"
+                            className="thumbnail"
+                            onClick={() =>
+                              openImageModal(transaction.paymentProofUrl)
+                            }
+                          />
+                        </div>
+                      ) : (
+                        <span>-</span>
+                      )}
+                    </td>
+                    {session?.user?.role === "admin" && (
+                      <td>
+                        {transaction.user?.email || "Utilisateur inconnu"}
+                      </td>
+                    )}
+                    <td>
+                      <button
+                        className="details-button"
+                        onClick={() => openDetailsModal(transaction)}
+                      >
+                        Détails
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal pour afficher l'image en grand */}
+      {selectedImage && (
+        <div className="image-modal" onClick={closeImageModal}>
+          <div className="modal-content">
+            <span className="close-button" onClick={closeImageModal}>
+              &times;
+            </span>
+            <iframe
+              src={selectedImage}
+              title="Document Google Drive"
+              width="100%"
+              height="100%"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour afficher les détails complets d'une transaction */}
+      {selectedTransaction && (
+        <div className="transaction-modal" onClick={closeDetailsModal}>
+          <div
+            className="transaction-modal-content"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="close-button" onClick={closeDetailsModal}>
+              &times;
+            </span>
+            <h3>Détails de la transaction</h3>
+            <div className="transaction-details">
+              <div className="details-grid">
+                <div className="detail-item">
+                  <span className="detail-label">Date:</span>
+                  <span className="detail-value">
+                    {formatDate(selectedTransaction.date)}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">N° d'ordre:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.orderNumber}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">N° de facture:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.factureNumber}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Client:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.clientName}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Email:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.clientMail || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Téléphone:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.phone || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Adresse:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.adresse || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Code postal:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.codePostal || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Ville:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.ville || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Désignation:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.designation || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Montant total:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.amount} €
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Agence:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.location || "Non spécifié"}
+                  </span>
+                </div>
+                <div className="detail-item">
+                  <span className="detail-label">Mode de paiement:</span>
+                  <span className="detail-value">
+                    {selectedTransaction.paiement}
+                  </span>
+                </div>
+                {session?.user?.role === "admin" && (
+                  <div className="detail-item">
+                    <span className="detail-label">Vendeur:</span>
+                    <span className="detail-value">
+                      {selectedTransaction.user?.email || "Utilisateur inconnu"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Afficher tous les items si présents */}
+              {selectedTransaction.items &&
+                selectedTransaction.items.length > 0 && (
+                  <div className="detail-items">
+                    <h4>Articles</h4>
+                    <table className="items-table">
+                      <thead>
+                        <tr>
+                          <th>Désignation</th>
+                          <th>Carats</th>
+                          <th>Poids</th>
+                          <th>Prix unitaire</th>
+                          <th>Sous-total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedTransaction.items.map((item, index) => (
+                          <tr key={index}>
+                            <td>{item.designation}</td>
+                            <td>{item.carats}</td>
+                            <td>{item.weight} g</td>
+                            <td>{item.unitPrice} €</td>
+                            <td>{item.subtotal} €</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+              <div className="detail-images">
+                {selectedTransaction.jewelryPhotoUrl && (
+                  <div className="detail-image-container">
+                    <h4>Photo du bijou</h4>
+                    <img
+                      src={getThumbnailUrl(selectedTransaction.jewelryPhotoUrl)}
+                      alt="Photo du bijou"
+                      onClick={() =>
+                        openImageModal(selectedTransaction.jewelryPhotoUrl)
+                      }
+                      className="detail-image"
+                    />
+                  </div>
+                )}
+
+                {selectedTransaction.paymentProofUrl && (
+                  <div className="detail-image-container">
+                    <h4>Preuve de paiement</h4>
+                    <img
+                      src={getThumbnailUrl(selectedTransaction.paymentProofUrl)}
+                      alt="Preuve de paiement"
+                      onClick={() =>
+                        openImageModal(selectedTransaction.paymentProofUrl)
+                      }
+                      className="detail-image"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -204,6 +497,162 @@ export default function TransactionList() {
         }
         tr:hover {
           background-color: #f5f5f5;
+        }
+        .thumbnail-container {
+          width: 50px;
+          height: 50px;
+          overflow: hidden;
+          border-radius: 4px;
+          border: 1px solid #ddd;
+          cursor: pointer;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .thumbnail {
+          max-width: 100%;
+          max-height: 100%;
+          object-fit: cover;
+        }
+        .image-modal,
+        .transaction-modal {
+          position: fixed;
+          z-index: 1000;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+          background-color: rgba(0, 0, 0, 0.7);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+        }
+        .modal-content {
+          position: relative;
+          background-color: white;
+          padding: 0;
+          width: 90%;
+          height: 90%;
+          border-radius: 8px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          overflow: hidden;
+        }
+        .transaction-modal-content {
+          position: relative;
+          background-color: white;
+          padding: 20px;
+          width: 90%;
+          max-width: 800px;
+          max-height: 90%;
+          border-radius: 8px;
+          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+          overflow-y: auto;
+        }
+        .close-button {
+          position: absolute;
+          top: 10px;
+          right: 15px;
+          color: #333;
+          font-size: 28px;
+          font-weight: bold;
+          cursor: pointer;
+          z-index: 1010;
+          background-color: white;
+          width: 30px;
+          height: 30px;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          border-radius: 50%;
+        }
+        .close-button:hover {
+          color: #000;
+          background-color: #eee;
+        }
+        .details-button {
+          background-color: #4caf50;
+          color: white;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+        .details-button:hover {
+          background-color: #45a049;
+        }
+        .transaction-details {
+          margin-top: 15px;
+        }
+        .details-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 10px;
+        }
+        .detail-item {
+          display: flex;
+          margin-bottom: 8px;
+          padding: 8px;
+          background-color: #f9f9f9;
+          border-radius: 4px;
+        }
+        .detail-label {
+          font-weight: bold;
+          margin-right: 8px;
+          min-width: 120px;
+        }
+        .detail-value {
+          flex: 1;
+        }
+        .detail-images {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px;
+          margin-top: 20px;
+        }
+        .detail-image-container {
+          flex: 1;
+          min-width: 200px;
+          max-width: 300px;
+        }
+        .detail-image-container h4 {
+          margin-bottom: 10px;
+        }
+        .detail-image {
+          width: 100%;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        .detail-image:hover {
+          border-color: #999;
+        }
+        .detail-items {
+          margin-top: 20px;
+          margin-bottom: 20px;
+        }
+        .items-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 10px;
+        }
+        .items-table th,
+        .items-table td {
+          padding: 8px;
+          text-align: left;
+          border-bottom: 1px solid #eee;
+        }
+        .items-table th {
+          background-color: #f2f2f2;
+          font-weight: bold;
+        }
+        .item-info {
+          padding: 2px 0;
+        }
+        .item-info hr {
+          margin: 5px 0;
+          border: 0;
+          border-top: 1px dashed #ddd;
         }
       `}</style>
     </div>

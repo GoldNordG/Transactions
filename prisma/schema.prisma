@@ -20,25 +20,35 @@ model User {
 }
 
 model Transaction {
-  id                Int      @id @default(autoincrement())
+  id                Int       @id @default(autoincrement())
   date              DateTime
   clientName        String
-  factureNumber     String   @default("N/A")
-  clientMail        String?  // Optionnel
-  phone             String?  // Optionnel
+  factureNumber     String    @default("N/A")
+  clientMail        String?   // Optionnel
+  phone             String?   // Optionnel
   adresse           String
   codePostal        String
   ville             String
   orderNumber       String
-  designation       String
-  weight            Float
-  carats            String
-  unitPrice         Float
-  amount            Float
-  paiement          String   @default("non spécifié")
-  location          String?  // Optionnel
-  jewelryPhotoUrl   String?  // URL de la photo du bijou dans Google Drive
-  paymentProofUrl   String?  // URL de la preuve de paiement dans Google Drive
-  userId            Int?     // Foreign key to User Optionnel
-  user              User?    @relation(fields: [userId], references: [id]) // Relation à User
+  designation       String?   // Optionnel maintenant car déplacé dans TransactionItem
+  weight            Float     // Total weight, calculé à partir des items
+  amount            Float     // Total amount, calculé à partir des items
+  paiement          String    @default("non spécifié")
+  location          String?   // Optionnel
+  jewelryPhotoUrl   String?   // URL de la photo du bijou dans Google Drive
+  paymentProofUrl   String?   // URL de la preuve de paiement dans Google Drive
+  userId            Int?      // Foreign key to User Optionnel
+  user              User?     @relation(fields: [userId], references: [id]) // Relation à User
+  items             TransactionItem[] // Relation aux items
+}
+
+model TransactionItem {
+  id            Int         @id @default(autoincrement())
+  designation   String
+  carats        String
+  weight        Float
+  unitPrice     Float
+  subtotal      Float
+  transactionId Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 }
