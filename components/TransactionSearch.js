@@ -8,6 +8,21 @@ export default function TransactionSearch({ onSearch }) {
     carats: "",
   });
 
+  // Liste des agences disponibles
+  const agences = [
+    "Maubeuge",
+    "Beauvais",
+    "Fourmies",
+    "Chaumont",
+    "Compiègne",
+    "Dourdan",
+    "Dreux",
+    "Aurillac",
+    "Saint-Dizier",
+    "Saint-Quentin",
+    "Puy-En-Velay",
+  ];
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({
@@ -38,14 +53,19 @@ export default function TransactionSearch({ onSearch }) {
         <div className="search-grid">
           <div className="form-group">
             <label htmlFor="location">Lieu</label>
-            <input
-              type="text"
+            <select
               id="location"
               name="location"
               value={filters.location}
               onChange={handleChange}
-              placeholder="Rechercher par lieu"
-            />
+            >
+              <option value="">Toutes les agences</option>
+              {agences.map((agence) => (
+                <option key={agence} value={agence}>
+                  {agence}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="form-group">

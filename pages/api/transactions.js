@@ -133,10 +133,21 @@ export default async function handler(req, res) {
       });
 
       // Générer la facture pour l'admin
-      const facturePDF = await generatePDF(newTransaction, "facture");
+      const facturePDF = await generatePDF(
+        {
+          ...newTransaction,
+          items: newTransaction.items, // S'assurer que les items sont inclus pour le PDF
+        },
+        "facture"
+      );
 
-      // Générer le formulaire de rétractation pour le client
-      const retractationPDF = await generatePDF(newTransaction, "retractation");
+      const retractationPDF = await generatePDF(
+        {
+          ...newTransaction,
+          items: newTransaction.items,
+        },
+        "retractation"
+      );
 
       // Formater la date
       const formattedDate = format(new Date(date), "dd/MM/yyyy", {
@@ -151,14 +162,14 @@ export default async function handler(req, res) {
       const itemsText = items
         .map(
           (item) => `
-  - Désignation : ${item.designation}
-  - Poids : ${item.weight} g
-  - Carats : ${item.carats}
-  - Prix unitaire : ${item.unitPrice} €
-  - Sous-total : ${(
-    parseFloat(item.weight) * parseFloat(item.unitPrice)
-  ).toFixed(2)} €
-      `
+- Désignation : ${item.designation}
+- Poids : ${item.weight} g
+- Carats : ${item.carats}
+- Prix unitaire : ${item.unitPrice} €/g
+- Sous-total : ${(parseFloat(item.weight) * parseFloat(item.unitPrice)).toFixed(
+            2
+          )} €
+`
         )
         .join("\n");
 

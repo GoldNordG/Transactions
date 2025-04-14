@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 
@@ -23,8 +23,17 @@ export default function TransactionForm({ onTransactionAdded }) {
     getValues,
   } = useForm({
     defaultValues: {
-      items: [{ carats: "", weight: 0, unitPrice: 0, subtotal: 0 }],
+      items: [
+        {
+          designation: "",
+          carats: "",
+          weight: "",
+          unitPrice: "",
+          subtotal: "0",
+        },
+      ],
     },
+    mode: "onChange", // Activer la validation au changement
   });
 
   // Utilisation de useFieldArray pour gérer les éléments multiples
@@ -36,59 +45,37 @@ export default function TransactionForm({ onTransactionAdded }) {
   const jewelryFileInputRef = useRef(null);
   const paymentFileInputRef = useRef(null);
 
-  // Observer les champs pour la validation conditionnelle
-  const watchPhone = watch("phone");
-  const watchEmail = watch("clientMail");
+  // Observer les items pour calculer le total
   const watchItems = watch("items");
 
-  // Calculer le sous-total pour chaque article
-  const calculateSubtotal = (index) => {
+  // Recalculer tous les sous-totaux et le total
+  const recalculateAll = () => {
     const values = getValues();
-    const item = values.items[index];
-    const weight = parseFloat(item.weight) || 0;
-    const price = parseFloat(item.unitPrice) || 0;
-    const subtotal = weight * price;
-    setValue(`items.${index}.subtotal`, subtotal.toFixed(2));
+    let newTotal = 0;
 
-    // Recalculer le total immédiatement après mise à jour du sous-total
-    calculateTotal();
-
-    return subtotal;
-  };
-
-  // Calculer le montant total à partir des sous-totaux
-  const calculateTotal = () => {
-    const values = getValues();
-    const amount = values.items.reduce((sum, item) => {
-      const subtotal = parseFloat(item.subtotal) || 0;
-      return sum + subtotal;
-    }, 0);
-    setTotalAmount(amount);
-    setValue("amount", amount.toFixed(2));
-  };
-
-  // Surveiller en temps réel les changements dans les champs weight et unitPrice
-  useEffect(() => {
-    if (watchItems) {
-      // Mettre à jour tous les sous-totaux et le total général
-      watchItems.forEach((_, index) => {
-        const values = getValues();
-        const item = values.items[index];
+    if (values.items && values.items.length > 0) {
+      values.items.forEach((item, index) => {
         const weight = parseFloat(item.weight) || 0;
         const price = parseFloat(item.unitPrice) || 0;
         const subtotal = weight * price;
-        setValue(`items.${index}.subtotal`, subtotal.toFixed(2));
-      });
 
-      // Calculer le montant total
-      const amount = watchItems.reduce((sum, item) => {
-        const subtotal = parseFloat(item.subtotal) || 0;
-        return sum + subtotal;
-      }, 0);
-      setTotalAmount(amount);
-      setValue("amount", amount.toFixed(2));
+        // Mettre à jour le sous-total de cet item
+        setValue(`items.${index}.subtotal`, subtotal.toFixed(2));
+
+        // Ajouter au total
+        newTotal += subtotal;
+      });
     }
-  }, [watchItems, setValue, getValues]);
+
+    // Mettre à jour le total
+    setTotalAmount(newTotal);
+    setValue("amount", newTotal.toFixed(2));
+  };
+
+  // Appeler recalculateAll à chaque modification des items
+  useEffect(() => {
+    recalculateAll();
+  }, [watchItems]);
 
   useEffect(() => {
     // Récupérer les informations de l'utilisateur si connecté
@@ -139,7 +126,22 @@ export default function TransactionForm({ onTransactionAdded }) {
 
   // Ajouter un nouvel item
   const addItem = () => {
-    append({ carats: "", weight: 0, unitPrice: 0, subtotal: 0 });
+    append({
+      designation: "",
+      carats: "",
+      weight: "",
+      unitPrice: "",
+      subtotal: "0",
+    });
+  };
+
+  // Gérer les changements de valeur et forcer le recalcul
+  const handleValueChange = (index, field) => (e) => {
+    const value = e.target.value;
+    setValue(`items.${index}.${field}`, value);
+
+    // Recalculer le sous-total et le total
+    setTimeout(recalculateAll, 0);
   };
 
   const onSubmit = async (data) => {
@@ -232,7 +234,15 @@ export default function TransactionForm({ onTransactionAdded }) {
 
       // Réinitialiser le formulaire après soumission
       reset({
-        items: [{ carats: "", weight: 0, unitPrice: 0, subtotal: 0 }],
+        items: [
+          {
+            designation: "",
+            carats: "",
+            weight: "",
+            unitPrice: "",
+            subtotal: "0",
+          },
+        ],
       });
       setJewelryPreview(null);
       setPaymentPreview(null);
@@ -343,52 +353,84 @@ export default function TransactionForm({ onTransactionAdded }) {
             {fields.map((field, index) => (
               <div key={field.id} className="item-row">
                 <div>
-                  <input
-                    {...register(`items.${index}.designation`)}
-                    placeholder="Désignation"
-                    required
+                  <Controller
+                    name={`items.${index}.designation`}
+                    control={control}
+                    render={({ field }) => (
+                      <input {...field} placeholder="Désignation" required />
+                    )}
                   />
                 </div>
                 <div>
-                  <select {...register(`items.${index}.carats`)} required>
-                    <option value="">Choisir...</option>
-                    <option value="24">24K</option>
-                    <option value="22">22K</option>
-                    <option value="18">18K</option>
-                    <option value="14">14K</option>
-                    <option value="9">9K</option>
-                    <option value="ARG">Argent</option>
-                    <option value="MET ARG">Métal Argenté</option>
-                    <option value="PLAT">Platinium</option>
-                  </select>
-                </div>
-                <div>
-                  <input
-                    {...register(`items.${index}.weight`)}
-                    type="number"
-                    step="0.01"
-                    placeholder="Poids"
-                    required
-                    onChange={() => calculateSubtotal(index)}
+                  <Controller
+                    name={`items.${index}.carats`}
+                    control={control}
+                    render={({ field }) => (
+                      <select {...field} required>
+                        <option value="">Choisir...</option>
+                        <option value="24">24K</option>
+                        <option value="22">22K</option>
+                        <option value="18">18K</option>
+                        <option value="14">14K</option>
+                        <option value="9">9K</option>
+                        <option value="ARG">Argent</option>
+                        <option value="MET ARG">Métal Argenté</option>
+                        <option value="PLAT">Platinium</option>
+                      </select>
+                    )}
                   />
                 </div>
                 <div>
-                  <input
-                    {...register(`items.${index}.unitPrice`)}
-                    type="number"
-                    step="0.01"
-                    placeholder="Prix"
-                    required
-                    onChange={() => calculateSubtotal(index)}
+                  <Controller
+                    name={`items.${index}.weight`}
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        placeholder="Poids"
+                        required
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleValueChange(index, "weight")(e);
+                        }}
+                      />
+                    )}
                   />
                 </div>
                 <div>
-                  <input
-                    {...register(`items.${index}.subtotal`)}
-                    type="number"
-                    step="0.01"
-                    readOnly
-                    placeholder="0.00"
+                  <Controller
+                    name={`items.${index}.unitPrice`}
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        placeholder="Prix"
+                        required
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleValueChange(index, "unitPrice")(e);
+                        }}
+                      />
+                    )}
+                  />
+                </div>
+                <div>
+                  <Controller
+                    name={`items.${index}.subtotal`}
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        {...field}
+                        type="number"
+                        step="0.01"
+                        readOnly
+                        placeholder="0.00"
+                      />
+                    )}
                   />
                 </div>
                 <div>
@@ -399,7 +441,7 @@ export default function TransactionForm({ onTransactionAdded }) {
                       onClick={() => {
                         remove(index);
                         // Recalculer le total après suppression
-                        setTimeout(calculateTotal, 0);
+                        setTimeout(recalculateAll, 0);
                       }}
                     >
                       Supprimer
@@ -560,10 +602,10 @@ export default function TransactionForm({ onTransactionAdded }) {
           display: grid;
           grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
           gap: 10px;
-          background-color: #black;
+          background-color: #333;
           padding: 10px;
           font-weight: bold;
-          font-color: gold;
+          color: gold;
         }
         .item-row {
           display: grid;
