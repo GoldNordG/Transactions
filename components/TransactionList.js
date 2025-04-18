@@ -115,20 +115,39 @@ export default function TransactionList() {
     );
   };
 
+  // Fonction pour supprimer une transaction (uniquement pour superadmin)
+  const deleteTransaction = async (transactionId) => {
+    if (
+      window.confirm("Êtes-vous sûr de vouloir supprimer cette transaction ?")
+    ) {
+      try {
+        await axios.delete(`/api/transactions/${transactionId}`);
+        // Rafraîchir la liste après la suppression
+        fetchTransactions(filters);
+      } catch (error) {
+        console.error("Erreur lors de la suppression", error);
+        alert("Impossible de supprimer la transaction");
+      }
+    }
+  };
+
   const totals = calculateTotals();
 
   if (loading && !transactions.length)
     return <p>Chargement des transactions...</p>;
   if (error) return <p className="error">{error}</p>;
 
+  // Vérifier si l'utilisateur est admin ou superadmin
+  const isAdminOrSuperAdmin =
+    session?.user?.role === "admin" || session?.user?.role === "superadmin";
+  const isSuperAdmin = session?.user?.role === "superadmin";
+
   return (
     <div>
       <h2>Liste des Transactions</h2>
 
-      {/* Afficher le composant de recherche uniquement pour les administrateurs */}
-      {session?.user?.role === "admin" && (
-        <TransactionSearch onSearch={handleSearch} />
-      )}
+      {/* Afficher le composant de recherche uniquement pour les administrateurs et superadmins */}
+      {isAdminOrSuperAdmin && <TransactionSearch onSearch={handleSearch} />}
 
       {/* Afficher les totaux des transactions */}
       <div className="transaction-stats">
@@ -165,8 +184,7 @@ export default function TransactionList() {
                 <th>Paiement</th>
                 <th>Photo Bijou</th>
                 <th>RIB/Cheque</th>
-                {session?.user?.role === "admin" && <th>Vendeur</th>}
-                <th>Informations</th> {/* Nouvelle colonne pour le bouton */}
+                <th>Informations</th>
               </tr>
             </thead>
             <tbody>
@@ -248,11 +266,6 @@ export default function TransactionList() {
                         <span>-</span>
                       )}
                     </td>
-                    {session?.user?.role === "admin" && (
-                      <td>
-                        {transaction.user?.email || "Utilisateur inconnu"}
-                      </td>
-                    )}
                     <td>
                       <button
                         className="details-button"
@@ -377,7 +390,7 @@ export default function TransactionList() {
                     {selectedTransaction.paiement}
                   </span>
                 </div>
-                {session?.user?.role === "admin" && (
+                {isAdminOrSuperAdmin && (
                   <div className="detail-item">
                     <span className="detail-label">Vendeur:</span>
                     <span className="detail-value">

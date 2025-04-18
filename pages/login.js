@@ -1,4 +1,5 @@
-import { signIn, useSession } from "next-auth/react";
+// pages/login.js
+import { signIn, useSession, getSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 
@@ -17,6 +18,16 @@ export default function LoginPage() {
     }
   }, [status, router]);
 
+  // Vérifier si la session a expiré (paramètre dans l'URL)
+  useEffect(() => {
+    if (router.query.session === "expired") {
+      setError("Votre session a expiré. Veuillez vous reconnecter.");
+    } else if (router.query.error) {
+      // Gérer d'autres erreurs possibles
+      setError("Erreur d'authentification. Veuillez vous reconnecter.");
+    }
+  }, [router.query]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -28,33 +39,38 @@ export default function LoginPage() {
       return;
     }
 
-    const result = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    try {
+      const result = await signIn("credentials", {
+        redirect: false,
+        email,
+        password,
+      });
 
-    if (result?.error) {
-      if (result.error === "CredentialsSignin") {
-        setError("Identifiants invalides. Veuillez réessayer.");
-      } else {
-        setError("Une erreur est survenue. Veuillez réessayer plus tard.");
+      if (result?.error) {
+        if (result.error === "CredentialsSignin") {
+          setError("Email ou mot de passe incorrect");
+        } else {
+          setError("Une erreur est survenue lors de la connexion");
+        }
+      } else if (result?.ok) {
+        // Mise à jour de la session avant redirection
+        const newSession = await getSession();
+        if (newSession) {
+          router.push("/");
+        } else {
+          setError("Problème d'initialisation de session");
+        }
       }
+    } catch (error) {
+      console.error("Erreur de connexion:", error);
+      setError("Une erreur inattendue s'est produite");
+    } finally {
       setLoading(false);
-    } else if (result?.ok) {
-      // Si la connexion est réussie, rediriger vers la page d'accueil
-      router.push("/");
     }
   };
-  // Dans login.js
-  useEffect(() => {
-    // Vérifier si la session a expiré
-    if (router.query.session === "expired") {
-      setError("Votre session a expiré. Veuillez vous reconnecter.");
-    }
-  }, [router.query]);
 
-  if (status === "loading" || status === "authenticated") {
+  // Afficher un message de chargement pendant la vérification de statut
+  if (status === "loading") {
     return <div>Chargement...</div>;
   }
 

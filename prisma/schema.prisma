@@ -14,7 +14,7 @@ model User {
   id           Int           @id @default(autoincrement())
   email        String        @unique
   password     String
-  role         String        // Role of the user (e.g., "admin", "agency")
+  role         String        // Role of the user (e.g.,"superadmin" "admin", "agency")
   location     String?       // Location of the agency (e.g., "Maubeuge")
   transactions Transaction[] // Relation to transactions
 }
@@ -37,6 +37,8 @@ model Transaction {
   location          String?   // Optionnel
   jewelryPhotoUrl   String?   // URL de la photo du bijou dans Google Drive
   paymentProofUrl   String?   // URL de la preuve de paiement dans Google Drive
+  fraudChecked      Boolean   @default(false)  // Indique si la transaction a été vérifiée
+  isFraud           Boolean   @default(false)  // Indique si la transaction est frauduleuse
   userId            Int?      // Foreign key to User Optionnel
   user              User?     @relation(fields: [userId], references: [id]) // Relation à User
   items             TransactionItem[] // Relation aux items

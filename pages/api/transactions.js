@@ -247,11 +247,13 @@ GOLD NORD`;
         });
 
         whereClause.location = user.location;
-      } else if (session.user.role !== "admin") {
+      } else if (
+        session.user.role !== "admin" &&
+        session.user.role !== "superadmin"
+      ) {
         // Rôle non reconnu
         return res.status(403).json({ message: "Accès non autorisé" });
       }
-
       // Ajouter des filtres supplémentaires si spécifiés
       if (location) {
         whereClause.location = {
