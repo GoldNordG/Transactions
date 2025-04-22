@@ -156,7 +156,7 @@ export default async function handler(req, res) {
 
       // Envoyer la facture à l'admin
       const adminEmail = "goldnord.digital@gmail.com";
-      const adminSubject = `Nouvelle transaction : ${orderNumber} à ${transactionLocation} le ${formattedDate}`;
+      const adminSubject = `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}`;
 
       // Créer le texte pour chaque item
       const itemsText = items

@@ -10,7 +10,7 @@ import TraqueFra from "../components/TraqueFra";
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [userInfo, setUserInfo] = useState(null);
+  // Removed unused userInfo state
   const [activeTab, setActiveTab] = useState("transactions");
 
   useEffect(() => {
@@ -39,9 +39,11 @@ export default function HomePage() {
               Connecté en tant que Super Administrateur | {session.user.email}
             </p>
           ) : session.user.role === "admin" ? (
-            <p>Connecté en tant qu'Administrateur | {session.user.email}</p>
+            <p>
+              Connecté en tant qu&apos;Administrateur | {session.user.email}
+            </p>
           ) : (
-            <p>Connecté en tant qu'Agence {session.user.location}</p>
+            <p>Connecté en tant qu&apos;Agence {session.user.location}</p>
           )}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}

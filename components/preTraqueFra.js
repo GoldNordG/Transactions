@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 
 export default function PreTraqueFra() {
   const [transactions, setTransactions] = useState([]);
@@ -321,7 +322,7 @@ export default function PreTraqueFra() {
                   </span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">N° d'ordre:</span>
+                  <span className="detail-label">N° d&apos;ordre:</span>
                   <span className="detail-value">
                     {selectedTransaction.orderNumber}
                   </span>
@@ -434,10 +435,12 @@ export default function PreTraqueFra() {
                 {selectedTransaction.jewelryPhotoUrl && (
                   <div className="detail-image-container">
                     <h4>Photo du bijou</h4>
-                    <img
+                    <Image
                       src={getThumbnailUrl(selectedTransaction.jewelryPhotoUrl)}
                       alt="Photo du bijou"
                       className="detail-image"
+                      width={100} // Ajoutez une largeur appropriée
+                      height={75}
                     />
                   </div>
                 )}
@@ -445,10 +448,12 @@ export default function PreTraqueFra() {
                 {selectedTransaction.paymentProofUrl && (
                   <div className="detail-image-container">
                     <h4>Preuve de paiement</h4>
-                    <img
+                    <Image
                       src={getThumbnailUrl(selectedTransaction.paymentProofUrl)}
                       alt="Preuve de paiement"
                       className="detail-image"
+                      width={100} // Ajoutez une largeur appropriée
+                      height={75}
                     />
                   </div>
                 )}

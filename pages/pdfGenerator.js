@@ -1,7 +1,6 @@
 import PDFDocument from "pdfkit";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import fs from "fs";
 import path from "path";
 
 export function generatePDF(transaction, type = "facture") {
@@ -77,11 +76,11 @@ export function generatePDF(transaction, type = "facture") {
       const leftColumnX = 80;
       const rightColumnX = doc.page.width / 2 + 20;
 
-      // Colonne gauche - Vendeur
+      // Colonne gauche - Acheteur
       doc
         .fontSize(12)
         .font("Helvetica-Bold")
-        .text("Vendeur (professionnel) :", leftColumnX);
+        .text("Acheteur (professionnel) :", leftColumnX);
       doc
         .font("Helvetica")
         .text("Nom de l'entreprise : GOLD NORD", leftColumnX);
@@ -92,11 +91,11 @@ export function generatePDF(transaction, type = "facture") {
       doc.text(`Adresse : 85 bis avenue de France`, leftColumnX);
       doc.text(`59600 Maubeuge`, leftColumnX);
 
-      // Colonne droite - Acheteur
+      // Colonne droite - Vendeur
       doc
         .fontSize(12)
         .font("Helvetica-Bold")
-        .text("Acheteur (client) :", rightColumnX);
+        .text("Vendeur (client) :", rightColumnX);
       doc
         .font("Helvetica")
         .text(`Nom : ${transaction.clientName}`, rightColumnX);
@@ -158,7 +157,7 @@ export function generatePDF(transaction, type = "facture") {
 
       // S'assurer que transaction.items existe
       if (transaction.items && transaction.items.length > 0) {
-        transaction.items.forEach((item, index) => {
+        transaction.items.forEach((item) => {
           doc.font("Helvetica");
           doc.text(item.designation, leftColumnX, yPosition, {
             width: tableWidth * 0.35,
@@ -250,12 +249,16 @@ export function generatePDF(transaction, type = "facture") {
         yPosition
       );
     } else if (type === "retractation") {
+      // Définir les marges pour la section rétractation
+      const leftColumnX = 80;
+      const tableWidth = doc.page.width - 160;
+
       // Formulaire de rétractation existant...
       doc
-        .fontSize(24)
+        .fontSize(20)
         .font("Helvetica-Bold")
         .text("FORMULAIRE DE RÉTRACTATION", { align: "center" });
-      doc.moveDown(2);
+      doc.moveDown(0.3);
 
       doc.fontSize(12).font("Helvetica-Bold").text("À l'attention de :");
       doc.font("Helvetica").text(`GOLD NORD`);
@@ -300,13 +303,42 @@ export function generatePDF(transaction, type = "facture") {
       doc.text(`Facture n° : ${transaction.factureNumber}`);
       doc.moveDown(2);
 
-      doc.text(
-        `Fait à ${transaction.location || "Maubeuge"}, le ${formattedDate}`
-      );
+      // Ajouter le coupon de rétractation
+      doc
+        .fontSize(12)
+        .font("Helvetica-Bold")
+        .text("Coupon de rétractation", { align: "center" });
+      doc
+        .moveTo(leftColumnX, doc.y + 10)
+        .lineTo(leftColumnX + tableWidth, doc.y + 10)
+        .stroke();
+      doc.moveDown(1);
+
+      doc.font("Helvetica").text("(Découper ici)", { align: "center" });
       doc.moveDown(2);
 
-      doc.text("Signature du client : __________________________");
+      doc.text(
+        `Si vous souhaitez exercer votre droit de rétractation dans les 48 heures à compter de la signature du contrat,`
+      );
+      doc.text(
+        `vous pouvez utiliser le formulaire détachable prévu à cet effet.`
+      );
+      doc.text(
+        `Ce formulaire ne s'applique pas à la vente d'Or investissement.`
+      );
       doc.moveDown();
+
+      doc.text(
+        `Je soussigné(e) Mr/Mme ${transaction.clientName}, demeurant à ${transaction.adresse},`
+      );
+      doc.text(
+        `vous informe par la présente que je me rétracte du contrat de vente mentionné ci-dessus.`
+      );
+      doc.moveDown();
+
+      doc.text(`Date de la vente : ${formattedDate}`);
+      doc.text(`Numéro d'ordre : ${transaction.orderNumber}`);
+      doc.text(`Fait à ${transaction.location}, le ${formattedDate}`);
     }
 
     // Numérotation des pages - à faire à la fin avant doc.end()

@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import axios from "axios"; // Assurez-vous d'importer axios
 
 export default function SessionManager() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {

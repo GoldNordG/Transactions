@@ -115,22 +115,6 @@ export default function TransactionList() {
     );
   };
 
-  // Fonction pour supprimer une transaction (uniquement pour superadmin)
-  const deleteTransaction = async (transactionId) => {
-    if (
-      window.confirm("Êtes-vous sûr de vouloir supprimer cette transaction ?")
-    ) {
-      try {
-        await axios.delete(`/api/transactions/${transactionId}`);
-        // Rafraîchir la liste après la suppression
-        fetchTransactions(filters);
-      } catch (error) {
-        console.error("Erreur lors de la suppression", error);
-        alert("Impossible de supprimer la transaction");
-      }
-    }
-  };
-
   const totals = calculateTotals();
 
   if (loading && !transactions.length)
@@ -140,7 +124,7 @@ export default function TransactionList() {
   // Vérifier si l'utilisateur est admin ou superadmin
   const isAdminOrSuperAdmin =
     session?.user?.role === "admin" || session?.user?.role === "superadmin";
-  const isSuperAdmin = session?.user?.role === "superadmin";
+  // Removed unused variable 'isSuperAdmin'
 
   return (
     <div>
@@ -190,10 +174,7 @@ export default function TransactionList() {
             <tbody>
               {transactions.map((transaction) => {
                 // Récupérer le premier item ou utiliser des valeurs par défaut
-                const firstItem =
-                  transaction.items && transaction.items.length > 0
-                    ? transaction.items[0]
-                    : { carats: "", unitPrice: 0 };
+                // Removed unused variable 'firstItem'
 
                 return (
                   <tr key={transaction.id}>
@@ -319,7 +300,7 @@ export default function TransactionList() {
                   </span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">N° d'ordre:</span>
+                  <span className="detail-label">N° d&apos;ordre:</span>
                   <span className="detail-value">
                     {selectedTransaction.orderNumber}
                   </span>

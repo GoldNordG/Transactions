@@ -428,7 +428,7 @@ export default function TraqueFra() {
                   </span>
                 </div>
                 <div className="detail-item">
-                  <span className="detail-label">N° d'ordre:</span>
+                  <span className="detail-label">N° d&apos;ordre:</span>
                   <span className="detail-value">
                     {selectedTransaction.orderNumber}
                   </span>

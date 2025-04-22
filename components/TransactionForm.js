@@ -293,7 +293,7 @@ export default function TransactionForm({ onTransactionAdded }) {
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label>Numéro d'ordre</label>
+              <label>Numéro d&apos;ordre</label>
               <input
                 {...register("orderNumber")}
                 placeholder="Numéro d'ordre"
