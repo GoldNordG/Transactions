@@ -3,9 +3,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import TransactionForm from "../components/TransactionForm";
 import TransactionList from "../components/TransactionList";
-import PreTraqueFra from "../components/PreTraqueFra";
+import PreTraqueFra from "../components/preTraqueFra";
 import { signOut } from "next-auth/react";
-import TraqueFra from "../components/TraqueFra";
+import TraqueFra from "../components/traqueFra";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
