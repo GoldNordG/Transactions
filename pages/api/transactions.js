@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
-import { sendEmail } from "../mailer";
-import { generatePDF } from "../pdfGenerator";
+import { sendEmail } from "../../lib/mailer";
+import { generatePDF } from "../../lib/generatePDF"; // Assurez-vous que le chemin est correct
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getServerSession } from "next-auth";
