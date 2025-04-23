@@ -70,5 +70,5 @@ export async function middleware(req) {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
-  runtime: "edge", // important pour éviter les erreurs liées à l'environnement
+  runtime: "experimental-edge", // important pour éviter les erreurs liées à l'environnement
 };
