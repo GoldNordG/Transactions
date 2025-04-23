@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import TransactionSearch from "./TransactionSearch";
 
 export default function TransactionList() {
@@ -124,7 +125,6 @@ export default function TransactionList() {
   // Vérifier si l'utilisateur est admin ou superadmin
   const isAdminOrSuperAdmin =
     session?.user?.role === "admin" || session?.user?.role === "superadmin";
-  // Removed unused variable 'isSuperAdmin'
 
   return (
     <div>
@@ -173,9 +173,6 @@ export default function TransactionList() {
             </thead>
             <tbody>
               {transactions.map((transaction) => {
-                // Récupérer le premier item ou utiliser des valeurs par défaut
-                // Removed unused variable 'firstItem'
-
                 return (
                   <tr key={transaction.id}>
                     <td>{formatDate(transaction.date)}</td>
@@ -218,13 +215,15 @@ export default function TransactionList() {
                     <td>
                       {transaction.jewelryPhotoUrl ? (
                         <div className="thumbnail-container">
-                          <img
+                          <Image
                             src={getThumbnailUrl(transaction.jewelryPhotoUrl)}
                             alt="Photo bijou"
                             className="thumbnail"
                             onClick={() =>
                               openImageModal(transaction.jewelryPhotoUrl)
                             }
+                            width={50}
+                            height={50}
                           />
                         </div>
                       ) : (
@@ -234,13 +233,15 @@ export default function TransactionList() {
                     <td>
                       {transaction.paymentProofUrl ? (
                         <div className="thumbnail-container">
-                          <img
+                          <Image
                             src={getThumbnailUrl(transaction.paymentProofUrl)}
                             alt="Preuve paiement"
                             className="thumbnail"
                             onClick={() =>
                               openImageModal(transaction.paymentProofUrl)
                             }
+                            width={50}
+                            height={50}
                           />
                         </div>
                       ) : (
@@ -415,13 +416,15 @@ export default function TransactionList() {
                 {selectedTransaction.jewelryPhotoUrl && (
                   <div className="detail-image-container">
                     <h4>Photo du bijou</h4>
-                    <img
+                    <Image
                       src={getThumbnailUrl(selectedTransaction.jewelryPhotoUrl)}
                       alt="Photo du bijou"
                       onClick={() =>
                         openImageModal(selectedTransaction.jewelryPhotoUrl)
                       }
                       className="detail-image"
+                      width={300}
+                      height={200}
                     />
                   </div>
                 )}
@@ -429,13 +432,15 @@ export default function TransactionList() {
                 {selectedTransaction.paymentProofUrl && (
                   <div className="detail-image-container">
                     <h4>Preuve de paiement</h4>
-                    <img
+                    <Image
                       src={getThumbnailUrl(selectedTransaction.paymentProofUrl)}
                       alt="Preuve de paiement"
                       onClick={() =>
                         openImageModal(selectedTransaction.paymentProofUrl)
                       }
                       className="detail-image"
+                      width={300}
+                      height={200}
                     />
                   </div>
                 )}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 
 export default function TraqueFra() {
   const [fraudTransactions, setFraudTransactions] = useState([]);
@@ -208,7 +209,7 @@ export default function TraqueFra() {
                               <td>
                                 {transaction.jewelryPhotoUrl ? (
                                   <div className="thumbnail-container">
-                                    <img
+                                    <Image
                                       src={getThumbnailUrl(
                                         transaction.jewelryPhotoUrl
                                       )}
@@ -219,6 +220,8 @@ export default function TraqueFra() {
                                           transaction.jewelryPhotoUrl
                                         )
                                       }
+                                      width={300}
+                                      height={200}
                                     />
                                   </div>
                                 ) : (
@@ -228,7 +231,7 @@ export default function TraqueFra() {
                               <td>
                                 {transaction.paymentProofUrl ? (
                                   <div className="thumbnail-container">
-                                    <img
+                                    <Image
                                       src={getThumbnailUrl(
                                         transaction.paymentProofUrl
                                       )}
@@ -239,6 +242,8 @@ export default function TraqueFra() {
                                           transaction.paymentProofUrl
                                         )
                                       }
+                                      width={300}
+                                      height={200}
                                     />
                                   </div>
                                 ) : (
@@ -335,7 +340,7 @@ export default function TraqueFra() {
                               <td>
                                 {transaction.jewelryPhotoUrl ? (
                                   <div className="thumbnail-container">
-                                    <img
+                                    <Image
                                       src={getThumbnailUrl(
                                         transaction.jewelryPhotoUrl
                                       )}
@@ -346,6 +351,8 @@ export default function TraqueFra() {
                                           transaction.jewelryPhotoUrl
                                         )
                                       }
+                                      width={300}
+                                      height={200}
                                     />
                                   </div>
                                 ) : (
@@ -355,7 +362,7 @@ export default function TraqueFra() {
                               <td>
                                 {transaction.paymentProofUrl ? (
                                   <div className="thumbnail-container">
-                                    <img
+                                    <Image
                                       src={getThumbnailUrl(
                                         transaction.paymentProofUrl
                                       )}
@@ -366,6 +373,8 @@ export default function TraqueFra() {
                                           transaction.paymentProofUrl
                                         )
                                       }
+                                      width={300}
+                                      height={200}
                                     />
                                   </div>
                                 ) : (
@@ -541,7 +550,7 @@ export default function TraqueFra() {
                 {selectedTransaction.jewelryPhotoUrl && (
                   <div className="detail-image-container">
                     <h4>Photo du bijou</h4>
-                    <img
+                    <Image
                       src={getThumbnailUrl(selectedTransaction.jewelryPhotoUrl)}
                       alt="Photo du bijou"
                       className="detail-image"
@@ -555,7 +564,7 @@ export default function TraqueFra() {
                 {selectedTransaction.paymentProofUrl && (
                   <div className="detail-image-container">
                     <h4>Preuve de paiement</h4>
-                    <img
+                    <Image
                       src={getThumbnailUrl(selectedTransaction.paymentProofUrl)}
                       alt="Preuve de paiement"
                       className="detail-image"

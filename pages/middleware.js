@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(req) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: process.env.NODE_ENV === "production", // important pour l'edge
+  });
+
   const { pathname } = req.nextUrl;
 
   // Routes publiques
@@ -11,7 +16,6 @@ export async function middleware(req) {
     pathname.startsWith("/api/auth/") ||
     pathname === "/forgot-password"
   ) {
-    // Si l'utilisateur est déjà connecté et essaie d'accéder à /login
     if (token && pathname === "/login") {
       return NextResponse.redirect(new URL("/", req.url));
     }
@@ -21,7 +25,6 @@ export async function middleware(req) {
   // Protéger les routes d'API
   if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth/")) {
     if (!token) {
-      // Pour les requêtes API, renvoyer une réponse JSON avec un statut 401
       return new NextResponse(
         JSON.stringify({
           error: "Non authentifié",
@@ -67,4 +70,5 @@ export async function middleware(req) {
 
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
+  runtime: "edge", // important pour éviter les erreurs liées à l'environnement
 };

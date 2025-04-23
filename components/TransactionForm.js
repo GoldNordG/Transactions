@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { useState, useEffect, useRef } from "react";
 
@@ -495,7 +496,12 @@ export default function TransactionForm({ onTransactionAdded }) {
               />
               {jewelryPreview && (
                 <div className="image-preview">
-                  <img src={jewelryPreview} alt="Prévisualisation du bijou" />
+                  <Image
+                    src={jewelryPreview}
+                    alt="Prévisualisation du bijou"
+                    width={300}
+                    height={200}
+                  />
                 </div>
               )}
             </div>
@@ -511,9 +517,11 @@ export default function TransactionForm({ onTransactionAdded }) {
               />
               {paymentPreview && (
                 <div className="image-preview">
-                  <img
+                  <Image
                     src={paymentPreview}
                     alt="Prévisualisation de la preuve de paiement"
+                    width={300}
+                    height={200}
                   />
                 </div>
               )}
