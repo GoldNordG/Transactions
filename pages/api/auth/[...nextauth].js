@@ -1,12 +1,10 @@
 // pages/api/auth/[...nextauth].js
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import prisma from "../../../lib/prisma";
 import { compare } from "bcrypt";
+import prisma from "../../../lib/prisma.js";
 
-const baseUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : process.env.NEXTAUTH_URL || "http://localhost:3000";
+export const runtime = "nodejs";
 
 export const authOptions = {
   providers: [
@@ -17,26 +15,19 @@ export const authOptions = {
         password: { label: "Mot de passe", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null;
-        }
+        if (!credentials?.email || !credentials?.password) return null;
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
 
-        if (!user) {
-          return null;
-        }
+        if (!user) return null;
 
         const isPasswordValid = await compare(
           credentials.password,
           user.password
         );
-
-        if (!isPasswordValid) {
-          return null;
-        }
+        if (!isPasswordValid) return null;
 
         return {
           id: user.id,
@@ -48,7 +39,7 @@ export const authOptions = {
     }),
   ],
   callbacks: {
-    jwt: async ({ token, user }) => {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
@@ -56,7 +47,7 @@ export const authOptions = {
       }
       return token;
     },
-    session: async ({ session, token }) => {
+    async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
@@ -67,13 +58,12 @@ export const authOptions = {
   },
   pages: {
     signIn: "/login",
-    error: "/login", // Ajouté : page d'erreur
+    error: "/login",
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 1 jour
+    maxAge: 24 * 60 * 60,
   },
-  // IMPORTANT: Ajoutez ces configurations
   useSecureCookies: process.env.NODE_ENV === "production",
   cookies: {
     sessionToken: {
@@ -86,9 +76,6 @@ export const authOptions = {
       },
     },
   },
-  // Correction des URLs de base pour éviter les problèmes de routage
-  basePath: "/api/auth",
-  baseUrl: baseUrl,
   debug: process.env.NODE_ENV === "development",
 };
 
