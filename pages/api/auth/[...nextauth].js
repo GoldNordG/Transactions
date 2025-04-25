@@ -4,6 +4,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import prisma from "../../../lib/prisma";
 import { compare } from "bcrypt";
 
+const baseUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : process.env.NEXTAUTH_URL || "http://localhost:3000";
+
 export const authOptions = {
   providers: [
     CredentialsProvider({
@@ -84,7 +88,7 @@ export const authOptions = {
   },
   // Correction des URLs de base pour éviter les problèmes de routage
   basePath: "/api/auth",
-  baseUrl: process.env.NEXTAUTH_URL || "http://localhost:3000",
+  baseUrl: baseUrl,
   debug: process.env.NODE_ENV === "development",
 };
 

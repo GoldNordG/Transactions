@@ -3,9 +3,9 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import TransactionForm from "../components/TransactionForm";
 import TransactionList from "../components/TransactionList";
-import PreTraqueFra from "../components/preTraqueFra";
+import PreTracFin from "../components/preTracFin";
 import { signOut } from "next-auth/react";
-import TraqueFra from "../components/traqueFra";
+import TracFin from "../components/TracFin";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -84,7 +84,7 @@ export default function HomePage() {
                 }`}
                 onClick={() => setActiveTab("preTraqueFra")}
               >
-                Pré-Traque Fra
+                Pré-Trac Fin
               </button>
             )}
             {/* N'afficher l'onglet "Pré-Traque Fra" que pour les superadmins */}
@@ -95,7 +95,7 @@ export default function HomePage() {
                 }`}
                 onClick={() => setActiveTab("traqueFra")}
               >
-                Traque Fra
+                Trac Fin
               </button>
             )}
           </div>
@@ -106,9 +106,9 @@ export default function HomePage() {
         <section className="tab-content">
           {activeTab === "transactions" && <TransactionList />}
           {activeTab === "preTraqueFra" &&
-            session.user.role === "superadmin" && <PreTraqueFra />}
+            session.user.role === "superadmin" && <PreTracFin />}
           {activeTab === "traqueFra" && session.user.role === "superadmin" && (
-            <TraqueFra />
+            <TracFin />
           )}
         </section>
       </main>

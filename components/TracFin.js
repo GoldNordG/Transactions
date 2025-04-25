@@ -3,7 +3,7 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
-export default function TraqueFra() {
+export default function TracFin() {
   const [fraudTransactions, setFraudTransactions] = useState([]);
   const [legitimateTransactions, setLegitimateTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,7 @@ export default function TraqueFra() {
   ];
 
   useEffect(() => {
-    console.log("Session dans TraqueFra:", session);
+    console.log("Session dans TracFin:", session);
     console.log("Rôle utilisateur:", session?.user?.role);
 
     // Modifiez cette ligne pour forcer l'appel API à des fins de test
@@ -139,7 +139,7 @@ export default function TraqueFra() {
 
   return (
     <div className="traque-fra-container">
-      <h2>Traque Fra - Résultats des validations</h2>
+      <h2>TracFin - Résultats des validations</h2>
       <p className="info-text">
         Ce rapport affiche les résultats des vérifications de fraude effectuées
         sur les transactions à risque.

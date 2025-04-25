@@ -3,7 +3,7 @@ import axios from "axios";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
 
-export default function PreTraqueFra() {
+export default function PreTracFin() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -159,7 +159,7 @@ export default function PreTraqueFra() {
 
   return (
     <div className="pre-traque-fra-container">
-      <h2>Transactions à risque (Pré-Traque Fra)</h2>
+      <h2>Transactions à risque (Pré-TracFin)</h2>
       <p className="info-text">
         Ce rapport affiche les transactions non vérifiées dont le montant est
         supérieur ou égal à 10 000 €, classées par catégories.
