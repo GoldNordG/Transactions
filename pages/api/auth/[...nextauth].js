@@ -15,19 +15,35 @@ export const authOptions = {
         password: { label: "Mot de passe", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
+        console.log("✅ Credentials received:", credentials);
+
+        if (!credentials?.email || !credentials?.password) {
+          console.error("❌ Missing email or password");
+          return null;
+        }
 
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
 
-        if (!user) return null;
+        console.log("🔎 User found:", user);
+
+        if (!user) {
+          console.error("❌ No user found with this email");
+          return null;
+        }
 
         const isPasswordValid = await compare(
           credentials.password,
           user.password
         );
-        if (!isPasswordValid) return null;
+
+        console.log("🔐 Is password valid:", isPasswordValid);
+
+        if (!isPasswordValid) {
+          console.error("❌ Invalid password");
+          return null;
+        }
 
         return {
           id: user.id,
@@ -62,7 +78,7 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 24 * 60 * 60,
+    maxAge: 24 * 60 * 60, // 1 day
   },
   useSecureCookies: process.env.NODE_ENV === "production",
   cookies: {
