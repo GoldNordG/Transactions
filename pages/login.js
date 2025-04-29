@@ -13,7 +13,8 @@ export default function LoginPage() {
     const res = await signIn("credentials", {
       email,
       password,
-      redirect: true,
+      redirect: false,
+      callbackUrl: "/",
     });
 
     console.log("🔵 Résultat signIn:", res);
@@ -21,7 +22,7 @@ export default function LoginPage() {
     if (res?.error) {
       setError("Identifiants incorrects.");
     } else {
-      window.location.href = "/";
+      window.location.href = res.url;
     }
   }
 
