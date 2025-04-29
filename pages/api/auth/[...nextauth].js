@@ -17,32 +17,35 @@ export const authOptions = {
       async authorize(credentials) {
         console.log("✅ Credentials received:", credentials);
 
-        try {
-          console.log("✅ Credentials received:", credentials);
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          });
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
 
-          console.log("👤 User found in DB:", user);
-          if (!user) return null;
+        console.log("👤 User found in DB:", user);
 
-          const isPasswordValid = await compare(
-            credentials.password,
-            user.password
-          );
-          console.log("🔒 Password valid:", isPasswordValid);
-          if (!isPasswordValid) return null;
-
-          return {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            location: user.location,
-          };
-        } catch (error) {
-          console.error("❌ Error in authorize:", error);
+        if (!user) {
+          console.log("❌ No user found with this email.");
           return null;
         }
+
+        const isPasswordValid = await compare(
+          credentials.password,
+          user.password
+        );
+
+        console.log("🔒 Password valid:", isPasswordValid);
+
+        if (!isPasswordValid) {
+          console.log("❌ Invalid password.");
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          location: user.location,
+        };
       },
     }),
   ],
