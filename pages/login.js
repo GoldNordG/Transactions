@@ -13,7 +13,7 @@ export default function LoginPage() {
     const res = await signIn("credentials", {
       email,
       password,
-      redirect: false,
+      redirect: true,
     });
 
     console.log("🔵 Résultat signIn:", res);
