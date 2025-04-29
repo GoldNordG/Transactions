@@ -40,9 +40,11 @@ export async function middleware(req) {
 
   // Pour les routes normales, rediriger vers login si non connecté
   if (!token) {
-    const url = new URL("/login", req.url);
-    url.searchParams.set("session", "expired");
-    return NextResponse.redirect(url);
+    // Utiliser l'URL de base sans les paramètres potentiellement problématiques
+    const baseUrl = new URL(req.nextUrl.origin);
+    baseUrl.pathname = "/login";
+    baseUrl.searchParams.set("session", "expired");
+    return NextResponse.redirect(baseUrl);
   }
 
   // Routes réservées aux administrateurs
@@ -51,7 +53,7 @@ export async function middleware(req) {
     token.role !== "admin" &&
     token.role !== "superadmin"
   ) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 
   // Routes réservées aux superadmins
@@ -62,7 +64,7 @@ export async function middleware(req) {
         pathname.includes("/fraud-status"))) &&
     token.role !== "superadmin"
   ) {
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/", req.nextUrl.origin));
   }
 
   return NextResponse.next();
