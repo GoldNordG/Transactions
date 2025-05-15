@@ -35,6 +35,7 @@ async function main() {
   const admins = [
     { email: "saint-quentin@goldnord.fr", password: "<6CCoaK20S_k" },
     { email: "goldnordavesnes@gmail.com", password: "u3B.BY]*J286" },
+    { email: "admin@goldnord.fr", password: "adminpassword" },
   ];
 
   for (const admin of admins) {
@@ -64,6 +65,11 @@ async function main() {
       email: "lepuyenvelaygoldnord@gmail.com",
       location: "Le Puy-En-Velay",
       password: "]3d|04&#89Um",
+    },
+    {
+      email: "chaumontgoldnord@gmail.com",
+      location: "Chaumont",
+      password: "31wbP7x;hb&D",
     },
   ];
 
