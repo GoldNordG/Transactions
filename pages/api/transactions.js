@@ -1,13 +1,10 @@
-// pages/api/transactions.js
-import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../lib/mailer";
 import { generatePDF } from "../../lib/generatePDF";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./auth/[...nextauth]";
-
-const prisma = new PrismaClient();
+import prisma from "../../lib/prisma";
 
 export default async function handler(req, res) {
   // Vérifier l'authentification
@@ -17,6 +14,13 @@ export default async function handler(req, res) {
     return res
       .status(401)
       .json({ message: "Non authentifié. Veuillez vous connecter." });
+  }
+
+  // Vérifier que session.user existe pour éviter les erreurs
+  if (!session.user) {
+    return res
+      .status(401)
+      .json({ message: "Session invalide. Veuillez vous reconnecter." });
   }
 
   if (req.method === "POST") {
@@ -83,7 +87,9 @@ export default async function handler(req, res) {
           where: { id: session.user.id },
         });
 
-        transactionLocation = user.location;
+        if (user && user.location) {
+          transactionLocation = user.location;
+        }
       }
 
       // Calculer le poids total
@@ -269,21 +275,49 @@ GOLD NORD`;
       // Construire l'objet de filtrage pour Prisma
       let whereClause = {};
 
-      // Filtrer selon le rôle de l'utilisateur
-      if (session.user.role === "agency") {
-        // Récupérer l'utilisateur pour obtenir sa localisation
-        const user = await prisma.user.findUnique({
-          where: { id: session.user.id },
-        });
+      // Vérifier et filtrer selon le rôle de l'utilisateur
+      if (session.user.role) {
+        if (session.user.role === "agency") {
+          try {
+            // Vérifier que l'ID existe avant la requête
+            if (!session.user.id) {
+              return res.status(400).json({
+                message: "ID utilisateur manquant dans la session",
+              });
+            }
 
-        whereClause.location = user.location;
-      } else if (
-        session.user.role !== "admin" &&
-        session.user.role !== "superadmin"
-      ) {
-        // Rôle non reconnu
-        return res.status(403).json({ message: "Accès non autorisé" });
+            // Récupérer l'utilisateur pour obtenir sa localisation
+            const user = await prisma.user.findUnique({
+              where: { id: session.user.id },
+            });
+
+            // Vérifier si l'utilisateur existe et a une localisation
+            if (user && user.location) {
+              whereClause.location = user.location;
+            } else {
+              console.warn(
+                `Utilisateur introuvable ou sans localisation: ${session.user.id}`
+              );
+              // Continuer sans filtre de localisation si l'utilisateur n'est pas trouvé
+            }
+          } catch (userError) {
+            console.error(
+              "Erreur lors de la récupération de l'utilisateur:",
+              userError
+            );
+            // Continuer sans filtre de localisation
+          }
+        } else if (
+          session.user.role !== "admin" &&
+          session.user.role !== "superadmin"
+        ) {
+          // Rôle non reconnu
+          return res.status(403).json({ message: "Accès non autorisé" });
+        }
+      } else {
+        return res.status(403).json({ message: "Rôle utilisateur non défini" });
       }
+
       // Ajouter des filtres supplémentaires si spécifiés
       if (location) {
         whereClause.location = {
@@ -337,9 +371,10 @@ GOLD NORD`;
       res.status(200).json(transactions);
     } catch (error) {
       console.error("Erreur lors de la récupération des transactions :", error);
-      res
-        .status(500)
-        .json({ message: "Erreur lors de la récupération des transactions" });
+      res.status(500).json({
+        message: "Erreur lors de la récupération des transactions",
+        error: error.message,
+      });
     }
   } else {
     res.status(405).json({ message: "Méthode non autorisée" });
