@@ -7,20 +7,12 @@ import { authOptions } from "./auth/[...nextauth]";
 import prisma from "../../lib/prisma";
 
 export default async function handler(req, res) {
-  // Vérifier l'authentification
   const session = await getServerSession(req, res, authOptions);
 
-  if (!session) {
+  if (!session || !session.user) {
     return res
       .status(401)
       .json({ message: "Non authentifié. Veuillez vous connecter." });
-  }
-
-  // Vérifier que session.user existe pour éviter les erreurs
-  if (!session.user) {
-    return res
-      .status(401)
-      .json({ message: "Session invalide. Veuillez vous reconnecter." });
   }
 
   if (req.method === "POST") {
@@ -40,10 +32,9 @@ export default async function handler(req, res) {
         location,
         jewelryPhotoUrl,
         paymentProofUrl,
-        items, // Le tableau d'items du formulaire
+        items,
       } = req.body;
 
-      // Valider les données de base
       if (
         !date ||
         !clientName ||
@@ -63,7 +54,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Vérifier que chaque item contient les informations nécessaires
       for (const item of items) {
         if (
           !item.designation ||
@@ -77,22 +67,14 @@ export default async function handler(req, res) {
         }
       }
 
-      // Définir la localisation en fonction du rôle de l'utilisateur
       let transactionLocation = location;
-
-      // Si c'est un utilisateur d'agence, utiliser sa localisation
       if (session.user.role === "agency") {
-        // Récupérer l'information complète de l'utilisateur
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
         });
-
-        if (user && user.location) {
-          transactionLocation = user.location;
-        }
+        if (user?.location) transactionLocation = user.location;
       }
 
-      // Calculer le poids total
       const totalWeight = items.reduce(
         (sum, item) => sum + parseFloat(item.weight),
         0
@@ -109,21 +91,17 @@ export default async function handler(req, res) {
           codePostal,
           ville,
           orderNumber,
-          // Pour la compatibilité avec le code existant, on utilise la désignation du premier item
-          // ou une concaténation des désignations
           designation:
             items.length === 1
               ? items[0].designation
               : items.map((i) => i.designation).join(", "),
           weight: totalWeight,
-          // No carats and unitPrice fields in Transaction model
           amount: parseFloat(amount),
           paiement,
           location: transactionLocation,
           userId: session.user.id,
           jewelryPhotoUrl: jewelryPhotoUrl || null,
           paymentProofUrl: paymentProofUrl || null,
-          // Ajouter les items en relation
           items: {
             create: items.map((item) => ({
               designation: item.designation,
@@ -134,34 +112,21 @@ export default async function handler(req, res) {
             })),
           },
         },
-        include: {
-          items: true, // Inclure les items dans la réponse
-        },
+        include: { items: true },
       });
 
-      // Générer la facture pour l'admin et le client
       const facturePDF = await generatePDF(
-        {
-          ...newTransaction,
-          items: newTransaction.items, // S'assurer que les items sont inclus pour le PDF
-        },
+        { ...newTransaction, items: newTransaction.items },
         "facture"
       );
-
       const retractationPDF = await generatePDF(
-        {
-          ...newTransaction,
-          items: newTransaction.items,
-        },
+        { ...newTransaction, items: newTransaction.items },
         "retractation"
       );
-
-      // Formater la date
       const formattedDate = format(new Date(date), "dd/MM/yyyy", {
         locale: fr,
       });
 
-      // Créer le texte pour chaque item
       const itemsText = items
         .map(
           (item) => `
@@ -176,11 +141,10 @@ export default async function handler(req, res) {
         )
         .join("\n");
 
-      // 1. Envoyer la facture à l'admin
-      const adminEmail = "goldnord.digital@gmail.com";
-      const adminSubject = `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}`;
-      const adminText = `
-Une nouvelle transaction a été enregistrée.
+      await sendEmail(
+        "goldnord.digital@gmail.com",
+        `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}`,
+        `Une nouvelle transaction a été enregistrée.
 
 Détails de la transaction :
 - Date : ${formattedDate}
@@ -195,22 +159,16 @@ Détails de la transaction :
 Articles :
 ${itemsText}
 
-Total : ${amount} €
-`;
-
-      await sendEmail(
-        adminEmail,
-        adminSubject,
-        adminText,
+Total : ${amount} €`,
         facturePDF,
         `facture_${orderNumber}.pdf`
       );
 
-      // 2. Envoyer la facture à l'utilisateur connecté (vendeur/agent)
       if (session.user.email) {
-        const userEmail = session.user.email;
-        const userSubject = `Gold Nord - Facture n° ${factureNumber} (Transaction ${orderNumber})`;
-        const userText = `Bonjour,
+        await sendEmail(
+          session.user.email,
+          `Gold Nord - Facture n° ${factureNumber} (Transaction ${orderNumber})`,
+          `Bonjour,
 
 Voici une copie de la facture pour la transaction que vous venez d'enregistrer.
 
@@ -224,22 +182,17 @@ Détails de la transaction :
 Cette facture a également été envoyée à l'administration centrale.
 
 Cordialement,
-GOLD NORD`;
-
-        await sendEmail(
-          userEmail,
-          userSubject,
-          userText,
+GOLD NORD`,
           facturePDF,
           `facture_${factureNumber}.pdf`
         );
       }
 
-      // 3. Envoyer le formulaire de rétractation au client (si email fourni)
       if (clientMail) {
-        const clientRetractationSubject =
-          "Gold Nord - Votre formulaire de rétractation";
-        const clientRetractationText = `Cher(e) ${clientName},
+        await sendEmail(
+          clientMail,
+          "Gold Nord - Votre formulaire de rétractation",
+          `Cher(e) ${clientName},
 
 Conformément aux dispositions légales en vigueur, nous vous transmettons ci-joint le formulaire de rétractation relatif à votre commande ${orderNumber}.
 
@@ -248,12 +201,7 @@ Si vous souhaitez exercer votre droit de rétractation, nous vous invitons à co
 Pour toute question ou assistance, notre service client reste à votre disposition.
 
 Cordialement,
-GOLD NORD`;
-
-        await sendEmail(
-          clientMail,
-          clientRetractationSubject,
-          clientRetractationText,
+GOLD NORD`,
           retractationPDF,
           `retractation_${orderNumber}.pdf`
         );
@@ -269,103 +217,43 @@ GOLD NORD`;
     }
   } else if (req.method === "GET") {
     try {
-      // Extraire les paramètres de requête pour les filtres
       const { location, startDate, endDate, carats } = req.query;
+      const whereClause = {};
 
-      // Construire l'objet de filtrage pour Prisma
-      let whereClause = {};
-
-      // Vérifier et filtrer selon le rôle de l'utilisateur
-      if (session.user.role) {
-        if (session.user.role === "agency") {
-          try {
-            // Vérifier que l'ID existe avant la requête
-            if (!session.user.id) {
-              return res.status(400).json({
-                message: "ID utilisateur manquant dans la session",
-              });
-            }
-
-            // Récupérer l'utilisateur pour obtenir sa localisation
-            const user = await prisma.user.findUnique({
-              where: { id: session.user.id },
-            });
-
-            // Vérifier si l'utilisateur existe et a une localisation
-            if (user && user.location) {
-              whereClause.location = user.location;
-            } else {
-              console.warn(
-                `Utilisateur introuvable ou sans localisation: ${session.user.id}`
-              );
-              // Continuer sans filtre de localisation si l'utilisateur n'est pas trouvé
-            }
-          } catch (userError) {
-            console.error(
-              "Erreur lors de la récupération de l'utilisateur:",
-              userError
-            );
-            // Continuer sans filtre de localisation
-          }
-        } else if (
-          session.user.role !== "admin" &&
-          session.user.role !== "superadmin"
-        ) {
-          // Rôle non reconnu
-          return res.status(403).json({ message: "Accès non autorisé" });
+      if (session.user.role === "agency") {
+        const user = await prisma.user.findUnique({
+          where: { id: session.user.id },
+        });
+        if (user?.location) whereClause.location = user.location;
+      } else if (["admin", "superadmin"].includes(session.user.role)) {
+        if (location?.trim()) {
+          whereClause.location = { contains: location, mode: "insensitive" };
         }
       } else {
-        return res.status(403).json({ message: "Rôle utilisateur non défini" });
-      }
-
-      // Ajouter des filtres supplémentaires si spécifiés
-      if (location) {
-        whereClause.location = {
-          contains: location,
-          mode: "insensitive", // Recherche insensible à la casse
-        };
+        return res.status(403).json({ message: "Accès non autorisé" });
       }
 
       if (carats) {
-        // Correct approach: search only within items since carats is no longer in Transaction
-        whereClause.items = {
-          some: {
-            carats,
-          },
-        };
+        whereClause.items = { some: { carats } };
       }
 
-      // Filtre de plage de dates
       if (startDate || endDate) {
         whereClause.date = {};
-
-        if (startDate) {
-          whereClause.date.gte = new Date(startDate);
-        }
-
+        if (startDate) whereClause.date.gte = new Date(startDate);
         if (endDate) {
-          // Ajouter un jour à la date de fin pour inclure toute la journée
           const endDateTime = new Date(endDate);
           endDateTime.setDate(endDateTime.getDate() + 1);
           whereClause.date.lt = endDateTime;
         }
       }
 
-      // Exécuter la requête avec les filtres
       const transactions = await prisma.transaction.findMany({
         where: whereClause,
         include: {
-          user: {
-            select: {
-              email: true,
-              location: true,
-            },
-          },
-          items: true, // Inclure les items
+          user: { select: { email: true, location: true } },
+          items: true,
         },
-        orderBy: {
-          date: "desc",
-        },
+        orderBy: { date: "desc" },
       });
 
       res.status(200).json(transactions);

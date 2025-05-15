@@ -71,6 +71,11 @@ async function main() {
       location: "Chaumont",
       password: "31wbP7x;hb&D",
     },
+    {
+      email: "compiegne@goldnord.fr",
+      location: "Compiegne",
+      password: "WS1O&fo15C<$",
+    },
   ];
 
   for (const agency of agencies) {
