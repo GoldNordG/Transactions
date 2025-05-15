@@ -36,15 +36,12 @@ export async function middleware(req) {
         }
       );
     }
-  }
-
-  // Pour les routes normales, rediriger vers login si non connecté
-  if (!token) {
     // Utiliser l'URL de base sans les paramètres potentiellement problématiques
-    const baseUrl = new URL(req.nextUrl.origin);
-    baseUrl.pathname = "/login";
-    baseUrl.searchParams.set("session", "expired");
-    return NextResponse.redirect(baseUrl);
+    // Pour les routes normales, rediriger vers login si non connecté
+    if (!token) {
+      // redirection simple vers /login, sans query param
+      return NextResponse.redirect(new URL("/login", req.url));
+    }
   }
 
   // Routes réservées aux administrateurs

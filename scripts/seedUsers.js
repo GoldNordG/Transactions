@@ -1,42 +1,77 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import * as dotenv from "dotenv";
+
+// Charger les variables d'environnement depuis .env.local
+dotenv.config({ path: ".env.local" });
 
 const prisma = new PrismaClient();
 
 async function main() {
+  // Vérifier que la variable DATABASE_URL est définie
+  if (!process.env.DATABASE_URL) {
+    console.error(
+      "Erreur: La variable DATABASE_URL n'est pas définie dans le fichier .env.local"
+    );
+    process.exit(1);
+  }
+
+  console.log("Connexion à la base de données...");
+
   // Supprimer les utilisateurs existants pour éviter les doublons
   await prisma.user.deleteMany({});
 
-  // Créer un utilisateur admin
-  const hashedPasswordAdmin = await bcrypt.hash("adminpassword", 10);
+  // Créer un super admin
+  const hashedPasswordSuperAdmin = await bcrypt.hash("N9|t8Q0]7Mu<", 10);
   await prisma.user.create({
     data: {
-      email: "admin@goldnord.fr",
-      password: hashedPasswordAdmin,
-      role: "admin",
+      email: "goldnord78000@gmail.com",
+      password: hashedPasswordSuperAdmin,
+      role: "superadmin",
     },
   });
 
+  // Créer des utilisateurs admin
+  const admins = [
+    { email: "saint-quentin@goldnord.fr", password: "<6CCoaK20S_k" },
+    { email: "goldnordavesnes@gmail.com", password: "u3B.BY]*J286" },
+  ];
+
+  for (const admin of admins) {
+    const hashedPasswordAdmin = await bcrypt.hash(admin.password, 10);
+    await prisma.user.create({
+      data: {
+        email: admin.email,
+        password: hashedPasswordAdmin,
+        role: "admin",
+      },
+    });
+  }
+
   // Créer plusieurs utilisateurs pour différentes agences
   const agencies = [
-    { email: "maubeuge@goldnord.fr", location: "Maubeuge" },
-    { email: "beauvais@goldnord.fr", location: "Beauvais" },
-    { email: "fourmies@goldnord.fr", location: "Fourmies" },
-    { email: "chaumont@goldnord.fr", location: "Chaumont" },
-    { email: "compiegne@goldnord.fr", location: "Compiègne" },
-    { email: "dourdan@goldnord.fr", location: "Dourdan" },
-    { email: "dreux@goldnord.fr", location: "Dreux" },
-    { email: "aurillac@goldnord.fr", location: "Aurillac" },
-    { email: "saint-dizier@goldnord.fr", location: "Saint-Dizier" },
-    { email: "saint-quentin@goldnord.fr", location: "Saint-Quentin" },
-    { email: "puy-en-velay@goldnord.fr", location: "Puy-En-Velay" },
+    {
+      email: "maubeuge@goldnord.fr",
+      location: "Maubeuge",
+      password: "n[^2992t+Rfk",
+    },
+    {
+      email: "saintquentin2goldnord@gmail.com",
+      location: "Saint-Quentin",
+      password: "~eCRu2MH18T(",
+    },
+    {
+      email: "lepuyenvelaygoldnord@gmail.com",
+      location: "Le Puy-En-Velay",
+      password: "]3d|04&#89Um",
+    },
   ];
 
   for (const agency of agencies) {
     if (!agency.email.includes("@")) {
       throw new Error(`Email invalide : ${agency.email}`);
     }
-    const hashedPassword = await bcrypt.hash("agence123", 10);
+    const hashedPassword = await bcrypt.hash(agency.password, 10);
     await prisma.user.create({
       data: {
         email: agency.email,

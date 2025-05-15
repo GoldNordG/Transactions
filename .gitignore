@@ -22,6 +22,7 @@ node_modules
 # production
 /build
 
+/scripts/
 # misc
 .DS_Store
 *.pem

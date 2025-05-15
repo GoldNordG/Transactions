@@ -1,6 +1,7 @@
+// pages/api/transactions.js
 import { PrismaClient } from "@prisma/client";
 import { sendEmail } from "../../lib/mailer";
-import { generatePDF } from "../../lib/generatePDF"; // Assurez-vous que le chemin est correct
+import { generatePDF } from "../../lib/generatePDF";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getServerSession } from "next-auth";
@@ -132,7 +133,7 @@ export default async function handler(req, res) {
         },
       });
 
-      // Générer la facture pour l'admin
+      // Générer la facture pour l'admin et le client
       const facturePDF = await generatePDF(
         {
           ...newTransaction,
@@ -154,10 +155,6 @@ export default async function handler(req, res) {
         locale: fr,
       });
 
-      // Envoyer la facture à l'admin
-      const adminEmail = "goldnord.digital@gmail.com";
-      const adminSubject = `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}`;
-
       // Créer le texte pour chaque item
       const itemsText = items
         .map(
@@ -173,6 +170,9 @@ export default async function handler(req, res) {
         )
         .join("\n");
 
+      // 1. Envoyer la facture à l'admin
+      const adminEmail = "goldnord.digital@gmail.com";
+      const adminSubject = `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}`;
       const adminText = `
 Une nouvelle transaction a été enregistrée.
 
@@ -200,10 +200,40 @@ Total : ${amount} €
         `facture_${orderNumber}.pdf`
       );
 
-      // Envoyer le formulaire de rétractation au client si l'email est fourni
+      // 2. Envoyer la facture à l'utilisateur connecté (vendeur/agent)
+      if (session.user.email) {
+        const userEmail = session.user.email;
+        const userSubject = `Gold Nord - Facture n° ${factureNumber} (Transaction ${orderNumber})`;
+        const userText = `Bonjour,
+
+Voici une copie de la facture pour la transaction que vous venez d'enregistrer.
+
+Détails de la transaction :
+- Date : ${formattedDate}
+- Client : ${clientName}
+- N° de facture : ${factureNumber}
+- N° d'ordre : ${orderNumber}
+- Total : ${amount} €
+
+Cette facture a également été envoyée à l'administration centrale.
+
+Cordialement,
+GOLD NORD`;
+
+        await sendEmail(
+          userEmail,
+          userSubject,
+          userText,
+          facturePDF,
+          `facture_${factureNumber}.pdf`
+        );
+      }
+
+      // 3. Envoyer le formulaire de rétractation au client (si email fourni)
       if (clientMail) {
-        const clientSubject = "Votre formulaire de rétractation";
-        const clientText = `Cher(e) ${clientName},
+        const clientRetractationSubject =
+          "Gold Nord - Votre formulaire de rétractation";
+        const clientRetractationText = `Cher(e) ${clientName},
 
 Conformément aux dispositions légales en vigueur, nous vous transmettons ci-joint le formulaire de rétractation relatif à votre commande ${orderNumber}.
 
@@ -216,8 +246,8 @@ GOLD NORD`;
 
         await sendEmail(
           clientMail,
-          clientSubject,
-          clientText,
+          clientRetractationSubject,
+          clientRetractationText,
           retractationPDF,
           `retractation_${orderNumber}.pdf`
         );

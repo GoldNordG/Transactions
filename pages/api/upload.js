@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { formidable } from "formidable";
 import fs from "fs";
 import path from "path";
+import os from "os";
 import { v4 as uuidv4 } from "uuid";
 
 // Configuration pour le parseur de formulaire
@@ -178,10 +179,8 @@ export default async function handler(req, res) {
 
   try {
     // Créer un répertoire temporaire si nécessaire
-    const tmpDir = path.join(process.cwd(), "tmp");
-    if (!fs.existsSync(tmpDir)) {
-      fs.mkdirSync(tmpDir);
-    }
+    const tmpDir = path.join(os.tmpdir(), "uploads");
+    fs.mkdirSync(tmpDir, { recursive: true });
 
     // Parsage du formulaire avec la nouvelle API formidable v4+
     const form = formidable({
