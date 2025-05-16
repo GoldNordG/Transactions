@@ -15,7 +15,20 @@ export default function TransactionList() {
   // État pour la modal de détails de transaction
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-  const fetchTransactions = async (queryParams = {}) => {
+  // États pour la pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const itemsPerPage = 20; // Nombre d'éléments par page
+
+  // États pour les statistiques totales
+  const [totalStats, setTotalStats] = useState({
+    totalWeight: 0,
+    totalAmount: 0,
+    count: 0,
+  });
+
+  const fetchTransactions = async (queryParams = {}, page = 1) => {
     try {
       setLoading(true);
 
@@ -29,14 +42,40 @@ export default function TransactionList() {
         params.append("startDate", queryParams.startDate);
       if (queryParams.endDate) params.append("endDate", queryParams.endDate);
       if (queryParams.carats) params.append("carats", queryParams.carats);
+      if (queryParams.clientName)
+        params.append("clientName", queryParams.clientName);
+
+      // Ajouter les paramètres de pagination
+      params.append("page", page);
+      params.append("limit", itemsPerPage);
 
       // Ajouter les paramètres à l'URL s'il y en a
       if (params.toString()) {
         url += `?${params.toString()}`;
       }
 
-      const { data } = await axios.get(url);
-      setTransactions(data);
+      // Définir un timeout plus long pour éviter les erreurs de timeout pour les requêtes volumineuses
+      const { data } = await axios.get(url, { timeout: 50000 }); // 50 secondes de timeout
+
+      setTransactions(data.transactions || data);
+
+      // Si l'API retourne des métadonnées de pagination
+      if (data.pagination) {
+        setTotalPages(data.pagination.totalPages);
+        setTotalItems(data.pagination.totalItems);
+        setTotalStats({
+          totalWeight: data.stats?.totalWeight || 0,
+          totalAmount: data.stats?.totalAmount || 0,
+          count: data.pagination.totalItems || 0,
+        });
+      } else {
+        // Si l'API ne gère pas encore la pagination, calculer les stats localement
+        const localStats = calculateTotals(data);
+        setTotalStats(localStats);
+        setTotalPages(1);
+        setTotalItems(data.length);
+      }
+
       setError(null);
     } catch (error) {
       console.error("Erreur lors de la récupération des transactions", error);
@@ -48,13 +87,21 @@ export default function TransactionList() {
 
   useEffect(() => {
     if (session) {
-      fetchTransactions(filters);
+      fetchTransactions(filters, currentPage);
     }
-  }, [session, filters]);
+  }, [session, filters, currentPage]);
 
   const handleSearch = (searchFilters) => {
     setFilters(searchFilters);
-    fetchTransactions(searchFilters);
+    setCurrentPage(1); // Réinitialiser à la première page lors d'une nouvelle recherche
+    fetchTransactions(searchFilters, 1);
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages) {
+      setCurrentPage(newPage);
+      window.scrollTo(0, 0); // Remonter en haut de la page
+    }
   };
 
   const formatDate = (dateString) => {
@@ -99,24 +146,22 @@ export default function TransactionList() {
     return url;
   };
 
-  // Calculer les totaux pour les transactions affichées
-  const calculateTotals = () => {
-    if (!transactions.length)
+  // Calculer les totaux pour les transactions affichées localement
+  const calculateTotals = (transactionData = transactions) => {
+    if (!transactionData.length)
       return { totalWeight: 0, totalAmount: 0, count: 0 };
 
-    return transactions.reduce(
+    return transactionData.reduce(
       (acc, transaction) => {
         return {
-          totalWeight: acc.totalWeight + parseFloat(transaction.weight),
-          totalAmount: acc.totalAmount + parseFloat(transaction.amount),
+          totalWeight: acc.totalWeight + parseFloat(transaction.weight || 0),
+          totalAmount: acc.totalAmount + parseFloat(transaction.amount || 0),
           count: acc.count + 1,
         };
       },
       { totalWeight: 0, totalAmount: 0, count: 0 }
     );
   };
-
-  const totals = calculateTotals();
 
   if (loading && !transactions.length)
     return <p>Chargement des transactions...</p>;
@@ -133,21 +178,82 @@ export default function TransactionList() {
       {/* Afficher le composant de recherche uniquement pour les administrateurs et superadmins */}
       {isAdminOrSuperAdmin && <TransactionSearch onSearch={handleSearch} />}
 
+      {/* Indiquer si des filtres sont actifs */}
+      {Object.keys(filters).length > 0 && (
+        <div className="filters-active">
+          <span>Filtres actifs</span>
+          <button
+            className="clear-filters"
+            onClick={() => {
+              setFilters({});
+              setCurrentPage(1);
+              fetchTransactions({}, 1);
+            }}
+          >
+            Effacer les filtres
+          </button>
+        </div>
+      )}
+
+      {/* État de chargement */}
+      {loading && <p className="loading-indicator">Chargement...</p>}
+
       {/* Afficher les totaux des transactions */}
       <div className="transaction-stats">
         <div className="stat-box">
           <span className="stat-label">Nombre de transactions</span>
-          <span className="stat-value">{totals.count}</span>
+          <span className="stat-value">{totalStats.count}</span>
         </div>
         <div className="stat-box">
           <span className="stat-label">Poids total</span>
-          <span className="stat-value">{totals.totalWeight.toFixed(2)} g</span>
+          <span className="stat-value">
+            {totalStats.totalWeight.toFixed(2)} g
+          </span>
         </div>
         <div className="stat-box">
           <span className="stat-label">Montant total</span>
-          <span className="stat-value">{totals.totalAmount.toFixed(2)} €</span>
+          <span className="stat-value">
+            {totalStats.totalAmount.toFixed(2)} €
+          </span>
         </div>
       </div>
+
+      {/* Pagination en haut */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className="pagination-button"
+          >
+            «
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="pagination-button"
+          >
+            ‹
+          </button>
+          <span className="pagination-info">
+            Page {currentPage} sur {totalPages} ({totalItems} transactions)
+          </span>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="pagination-button"
+          >
+            ›
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="pagination-button"
+          >
+            »
+          </button>
+        </div>
+      )}
 
       {transactions.length === 0 ? (
         <p>Aucune transaction à afficher.</p>
@@ -261,6 +367,43 @@ export default function TransactionList() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination en bas */}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button
+            onClick={() => handlePageChange(1)}
+            disabled={currentPage === 1}
+            className="pagination-button"
+          >
+            «
+          </button>
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="pagination-button"
+          >
+            ‹
+          </button>
+          <span className="pagination-info">
+            Page {currentPage} sur {totalPages} ({totalItems} transactions)
+          </span>
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="pagination-button"
+          >
+            ›
+          </button>
+          <button
+            onClick={() => handlePageChange(totalPages)}
+            disabled={currentPage === totalPages}
+            className="pagination-button"
+          >
+            »
+          </button>
         </div>
       )}
 
@@ -478,6 +621,8 @@ export default function TransactionList() {
         .table-responsive {
           overflow-x: auto;
           margin-top: 20px;
+          border: 1px solid #eee;
+          border-radius: 5px;
         }
         table {
           width: 100%;
@@ -652,6 +797,68 @@ export default function TransactionList() {
           margin: 5px 0;
           border: 0;
           border-top: 1px dashed #ddd;
+        }
+
+        /* Styles pour la pagination */
+        .pagination {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          margin: 20px 0;
+          gap: 10px;
+        }
+        .pagination-button {
+          padding: 5px 10px;
+          border: 1px solid #ddd;
+          background-color: #f8f8f8;
+          cursor: pointer;
+          border-radius: 3px;
+          min-width: 30px;
+          text-align: center;
+        }
+        .pagination-button:hover:not(:disabled) {
+          background-color: #e0e0e0;
+        }
+        .pagination-button:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+        .pagination-info {
+          padding: 0 10px;
+          color: #666;
+        }
+
+        /* Styles pour l'indicateur de filtres actifs */
+        .filters-active {
+          background-color: #fff8e1;
+          padding: 8px 12px;
+          border-radius: 4px;
+          margin-bottom: 15px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .clear-filters {
+          background-color: #f44336;
+          color: white;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+        }
+        .clear-filters:hover {
+          background-color: #d32f2f;
+        }
+
+        /* Style pour l'indicateur de chargement */
+        .loading-indicator {
+          text-align: center;
+          color: #666;
+          padding: 10px;
+          background-color: #f9f9f9;
+          border-radius: 4px;
+          margin: 10px 0;
         }
       `}</style>
     </div>

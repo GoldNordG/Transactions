@@ -217,48 +217,102 @@ GOLD NORD`,
     }
   } else if (req.method === "GET") {
     try {
-      const { location, startDate, endDate, carats } = req.query;
-      const whereClause = {};
+      // Paramètres de pagination
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 20;
+      const skip = (page - 1) * limit;
 
+      // Construction des filtres pour la requête Prisma
+      const filters = {};
+
+      // Gestion des accès selon le rôle
       if (session.user.role === "agency") {
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
         });
-        if (user?.location) whereClause.location = user.location;
+        if (user?.location) filters.location = user.location;
       } else if (["admin", "superadmin"].includes(session.user.role)) {
-        if (location?.trim()) {
-          whereClause.location = { contains: location, mode: "insensitive" };
+        if (req.query.location?.trim()) {
+          filters.location = {
+            contains: req.query.location,
+            mode: "insensitive",
+          };
         }
       } else {
-        return res.status(403).json({ message: "Accès non autorisé" });
+        // Les utilisateurs normaux ne voient que leurs propres transactions
+        filters.userId = session.user.id;
       }
 
-      if (carats) {
-        whereClause.items = { some: { carats } };
+      // Filtres supplémentaires
+      if (req.query.clientName) {
+        filters.clientName = {
+          contains: req.query.clientName,
+          mode: "insensitive",
+        };
       }
 
-      if (startDate || endDate) {
-        whereClause.date = {};
-        if (startDate) whereClause.date.gte = new Date(startDate);
-        if (endDate) {
-          const endDateTime = new Date(endDate);
-          endDateTime.setDate(endDateTime.getDate() + 1);
-          whereClause.date.lt = endDateTime;
+      // Filtre par carats (via les items)
+      if (req.query.carats) {
+        filters.items = { some: { carats: req.query.carats } };
+      }
+
+      // Filtre par date
+      if (req.query.startDate || req.query.endDate) {
+        filters.date = {};
+        if (req.query.startDate) {
+          filters.date.gte = new Date(req.query.startDate);
+        }
+        if (req.query.endDate) {
+          const endDate = new Date(req.query.endDate);
+          endDate.setDate(endDate.getDate() + 1);
+          filters.date.lt = endDate;
         }
       }
 
+      // Compter le nombre total de transactions pour la pagination
+      const totalItems = await prisma.transaction.count({ where: filters });
+
+      // Calculer le nombre total de pages
+      const totalPages = Math.ceil(totalItems / limit);
+
+      // Récupérer les transactions avec pagination
       const transactions = await prisma.transaction.findMany({
-        where: whereClause,
+        where: filters,
         include: {
-          user: { select: { email: true, location: true } },
           items: true,
+          user: { select: { email: true, location: true, role: true } },
         },
         orderBy: { date: "desc" },
+        skip,
+        take: limit,
       });
 
-      res.status(200).json(transactions);
+      // Statistiques totales via Prisma.aggregate (plus sûr que queryRaw)
+      const totalStats = await prisma.transaction.aggregate({
+        where: filters,
+        _sum: {
+          amount: true,
+          weight: true,
+        },
+      });
+
+      // Réponse avec pagination et statistiques
+      res.status(200).json({
+        transactions,
+        pagination: {
+          totalItems,
+          totalPages,
+          currentPage: page,
+          pageSize: limit,
+        },
+        stats: {
+          totalAmount: parseFloat(totalStats._sum.amount || 0),
+          totalWeight: parseFloat(totalStats._sum.weight || 0),
+          count: totalItems,
+        },
+      });
     } catch (error) {
-      console.error("Erreur lors de la récupération des transactions :", error);
+      console.error("Erreur lors de la récupération des transactions:", error);
       res.status(500).json({
         message: "Erreur lors de la récupération des transactions",
         error: error.message,
