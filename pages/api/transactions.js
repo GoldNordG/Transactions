@@ -217,15 +217,11 @@ GOLD NORD`,
     }
   } else if (req.method === "GET") {
     try {
-      // Paramètres de pagination
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 20;
       const skip = (page - 1) * limit;
-
-      // Construction des filtres pour la requête Prisma
       const filters = {};
 
-      // Gestion des accès selon le rôle
       if (session.user.role === "agency") {
         const user = await prisma.user.findUnique({
           where: { id: session.user.id },
@@ -239,11 +235,9 @@ GOLD NORD`,
           };
         }
       } else {
-        // Les utilisateurs normaux ne voient que leurs propres transactions
         filters.userId = session.user.id;
       }
 
-      // Filtres supplémentaires
       if (req.query.clientName) {
         filters.clientName = {
           contains: req.query.clientName,
@@ -251,12 +245,10 @@ GOLD NORD`,
         };
       }
 
-      // Filtre par carats (via les items)
       if (req.query.carats) {
         filters.items = { some: { carats: req.query.carats } };
       }
 
-      // Filtre par date
       if (req.query.startDate || req.query.endDate) {
         filters.date = {};
         if (req.query.startDate) {
@@ -269,13 +261,9 @@ GOLD NORD`,
         }
       }
 
-      // Compter le nombre total de transactions pour la pagination
       const totalItems = await prisma.transaction.count({ where: filters });
-
-      // Calculer le nombre total de pages
       const totalPages = Math.ceil(totalItems / limit);
 
-      // Récupérer les transactions avec pagination
       const transactions = await prisma.transaction.findMany({
         where: filters,
         include: {
@@ -287,7 +275,6 @@ GOLD NORD`,
         take: limit,
       });
 
-      // Statistiques totales via Prisma.aggregate (plus sûr que queryRaw)
       const totalStats = await prisma.transaction.aggregate({
         where: filters,
         _sum: {
@@ -296,7 +283,6 @@ GOLD NORD`,
         },
       });
 
-      // Réponse avec pagination et statistiques
       res.status(200).json({
         transactions,
         pagination: {

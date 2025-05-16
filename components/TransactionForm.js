@@ -11,17 +11,14 @@ export default function TransactionForm({ onTransactionAdded }) {
   const [jewelryPreview, setJewelryPreview] = useState(null);
   const [paymentPreview, setPaymentPreview] = useState(null);
   const [totalAmount, setTotalAmount] = useState(0);
-
   const {
     register,
     handleSubmit,
     reset,
     watch,
-    setError,
-    clearErrors,
     setValue,
     control,
-    getValues,
+    getValues, // Extract errors from formState
   } = useForm({
     defaultValues: {
       items: [
@@ -33,6 +30,9 @@ export default function TransactionForm({ onTransactionAdded }) {
           subtotal: "0",
         },
       ],
+      // Set empty defaults for contact fields
+      phone: "",
+      clientMail: "",
     },
     mode: "onChange", // Activer la validation au changement
   });
@@ -48,6 +48,8 @@ export default function TransactionForm({ onTransactionAdded }) {
 
   // Observer les items pour calculer le total
   const watchItems = watch("items");
+
+  // Watch phone and email to validate at least one is provided
 
   // Recalculer tous les sous-totaux et le total
   const recalculateAll = () => {
@@ -149,25 +151,6 @@ export default function TransactionForm({ onTransactionAdded }) {
     try {
       setIsUploading(true);
 
-      // Validation conditionnelle : au moins un des deux champs doit être rempli
-      if (!data.phone && !data.clientMail) {
-        setError("phone", {
-          type: "manual",
-          message:
-            "Veuillez remplir au moins un des champs : Téléphone ou Adresse mail.",
-        });
-        setError("clientMail", {
-          type: "manual",
-          message:
-            "Veuillez remplir au moins un des champs : Téléphone ou Adresse mail.",
-        });
-        setIsUploading(false);
-        return;
-      } else {
-        clearErrors("phone");
-        clearErrors("clientMail");
-      }
-
       // Si c'est un utilisateur d'agence, définir automatiquement la localisation
       if (session?.user?.role === "agency" && userInfo?.location) {
         data.location = userInfo.location;
@@ -244,6 +227,8 @@ export default function TransactionForm({ onTransactionAdded }) {
             subtotal: "0",
           },
         ],
+        phone: "",
+        clientMail: "",
       });
       setJewelryPreview(null);
       setPaymentPreview(null);

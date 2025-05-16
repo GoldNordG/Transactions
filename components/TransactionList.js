@@ -592,8 +592,8 @@ export default function TransactionList() {
           </div>
         </div>
       )}
-
       <style jsx>{`
+        /* liste styles */
         .transaction-stats {
           display: flex;
           gap: 20px;
