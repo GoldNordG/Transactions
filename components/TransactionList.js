@@ -9,7 +9,7 @@ export default function TransactionList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({});
-  const { data: session } = useSession();
+  const { data: session, status } = useSession(); // Ajout du statut de session
   // État pour la modal d'image
   const [selectedImage, setSelectedImage] = useState(null);
   // État pour la modal de détails de transaction
@@ -30,6 +30,12 @@ export default function TransactionList() {
 
   const fetchTransactions = async (queryParams = {}, page = 1) => {
     try {
+      // Vérifier si la session est chargée et si l'utilisateur est connecté
+      if (status !== "authenticated" || !session?.user) {
+        console.log("Utilisateur non authentifié, annulation de la requête");
+        return;
+      }
+
       setLoading(true);
 
       // Construire l'URL avec les paramètres de requête
@@ -45,6 +51,20 @@ export default function TransactionList() {
       if (queryParams.clientName)
         params.append("clientName", queryParams.clientName);
 
+      // Ajouter systématiquement l'ID utilisateur pour la sécurité côté client
+      // Même si l'API vérifiera également l'autorisation côté serveur
+      const isAdminOrSuperAdmin =
+        session.user.role === "admin" || session.user.role === "superadmin";
+
+      if (!isAdminOrSuperAdmin) {
+        console.log("Utilisateur standard, filtrage par ID:", session.user.id);
+        params.append("userId", session.user.id);
+      } else {
+        console.log(
+          "Admin/Superadmin détecté, affichage de toutes les transactions"
+        );
+      }
+
       // Ajouter les paramètres de pagination
       params.append("page", page);
       params.append("limit", itemsPerPage);
@@ -54,8 +74,15 @@ export default function TransactionList() {
         url += `?${params.toString()}`;
       }
 
+      console.log("Requête API:", url);
+
       // Définir un timeout plus long pour éviter les erreurs de timeout pour les requêtes volumineuses
       const { data } = await axios.get(url, { timeout: 50000 }); // 50 secondes de timeout
+
+      // Vérifier si les données reçues correspondent à l'utilisateur actuel
+      if (data && !isAdminOrSuperAdmin) {
+        console.log(`Données reçues pour l'utilisateur ${session.user.id}`);
+      }
 
       setTransactions(data.transactions || data);
 
@@ -86,15 +113,29 @@ export default function TransactionList() {
   };
 
   useEffect(() => {
-    if (session) {
+    // Attendre que la session soit complètement chargée avant de faire la requête
+    if (status === "authenticated" && session?.user) {
+      console.log(
+        "Session chargée, utilisateur:",
+        session.user.email,
+        "rôle:",
+        session.user.role
+      );
       fetchTransactions(filters, currentPage);
+    } else if (status === "loading") {
+      console.log("Chargement de la session...");
+    } else if (status === "unauthenticated") {
+      console.log("Utilisateur non authentifié");
+      setError("Vous devez être connecté pour voir les transactions.");
     }
-  }, [session, filters, currentPage]);
+  }, [session, status, filters, currentPage]);
 
   const handleSearch = (searchFilters) => {
     setFilters(searchFilters);
     setCurrentPage(1); // Réinitialiser à la première page lors d'une nouvelle recherche
-    fetchTransactions(searchFilters, 1);
+    if (status === "authenticated") {
+      fetchTransactions(searchFilters, 1);
+    }
   };
 
   const handlePageChange = (newPage) => {
@@ -163,6 +204,16 @@ export default function TransactionList() {
     );
   };
 
+  // Si la session est en cours de chargement
+  if (status === "loading") {
+    return <p>Chargement de la session...</p>;
+  }
+
+  // Si l'utilisateur n'est pas connecté
+  if (status === "unauthenticated") {
+    return <p>Veuillez vous connecter pour voir les transactions.</p>;
+  }
+
   if (loading && !transactions.length)
     return <p>Chargement des transactions...</p>;
   if (error) return <p className="error">{error}</p>;
@@ -174,6 +225,12 @@ export default function TransactionList() {
   return (
     <div>
       <h2>Liste des Transactions</h2>
+
+      {/* Afficher le nom et le rôle de l'utilisateur connecté pour le débogage */}
+      <div className="user-info">
+        <strong>Utilisateur connecté:</strong> {session.user.email}
+        <span className="user-role">({session.user.role})</span>
+      </div>
 
       {/* Afficher le composant de recherche uniquement pour les administrateurs et superadmins */}
       {isAdminOrSuperAdmin && <TransactionSearch onSearch={handleSearch} />}

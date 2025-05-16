@@ -36,6 +36,7 @@ async function main() {
     { email: "saint-quentin@goldnord.fr", password: "<6CCoaK20S_k" },
     { email: "goldnordavesnes@gmail.com", password: "u3B.BY]*J286" },
     { email: "admin@goldnord.fr", password: "adminpassword" },
+    { email: "goldnord.digital@gmail.com", password: "adminpassword" },
   ];
 
   for (const admin of admins) {
