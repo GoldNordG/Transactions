@@ -8,34 +8,29 @@ export default function TransactionForm({ onTransactionAdded }) {
   const { data: session } = useSession();
   const [userInfo, setUserInfo] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [jewelryPreview, setJewelryPreview] = useState(null);
-  const [paymentPreview, setPaymentPreview] = useState(null);
+
+  // Modifier pour avoir des tableaux d'images au lieu d'une seule
+  const [jewelryPreviews, setJewelryPreviews] = useState([]);
+  const [paymentPreviews, setPaymentPreviews] = useState([]);
+
   const [totalAmount, setTotalAmount] = useState(0);
-  const {
-    register,
-    handleSubmit,
-    reset,
-    watch,
-    setValue,
-    control,
-    getValues, // Extract errors from formState
-  } = useForm({
-    defaultValues: {
-      items: [
-        {
-          designation: "",
-          carats: "",
-          weight: "",
-          unitPrice: "",
-          subtotal: "0",
-        },
-      ],
-      // Set empty defaults for contact fields
-      phone: "",
-      clientMail: "",
-    },
-    mode: "onChange", // Activer la validation au changement
-  });
+  const { register, handleSubmit, reset, watch, setValue, control, getValues } =
+    useForm({
+      defaultValues: {
+        items: [
+          {
+            designation: "",
+            carats: "",
+            weight: "",
+            unitPrice: "",
+            subtotal: "0",
+          },
+        ],
+        phone: "",
+        clientMail: "",
+      },
+      mode: "onChange",
+    });
 
   // Utilisation de useFieldArray pour gérer les éléments multiples
   const { fields, append, remove } = useFieldArray({
@@ -43,13 +38,12 @@ export default function TransactionForm({ onTransactionAdded }) {
     name: "items",
   });
 
+  // Utiliser des références multiples pour les fichiers
   const jewelryFileInputRef = useRef(null);
   const paymentFileInputRef = useRef(null);
 
   // Observer les items pour calculer le total
   const watchItems = watch("items");
-
-  // Watch phone and email to validate at least one is provided
 
   // Recalculer tous les sous-totaux et le total
   const recalculateAll = () => {
@@ -101,30 +95,62 @@ export default function TransactionForm({ onTransactionAdded }) {
     }
   }, [session]);
 
-  // Gérer le téléchargement de la photo du bijou
+  // Gérer le téléchargement de plusieurs photos de bijoux
   const handleJewelryPhotoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Prévisualisation de l'image
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setJewelryPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newPreviews = [];
+
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews.push({
+            preview: reader.result,
+            file: file,
+          });
+          if (newPreviews.length === files.length) {
+            setJewelryPreviews((prev) => [...prev, ...newPreviews]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
-  // Gérer le téléchargement de la preuve de paiement
+  // Gérer le téléchargement de plusieurs preuves de paiement
   const handlePaymentProofUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Prévisualisation de l'image
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPaymentPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      const newPreviews = [];
+
+      files.forEach((file) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          newPreviews.push({
+            preview: reader.result,
+            file: file,
+          });
+          if (newPreviews.length === files.length) {
+            setPaymentPreviews((prev) => [...prev, ...newPreviews]);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
+  };
+
+  // Supprimer une photo de bijou
+  const removeJewelryPhoto = (index) => {
+    const newPreviews = [...jewelryPreviews];
+    newPreviews.splice(index, 1);
+    setJewelryPreviews(newPreviews);
+  };
+
+  // Supprimer une preuve de paiement
+  const removePaymentProof = (index) => {
+    const newPreviews = [...paymentPreviews];
+    newPreviews.splice(index, 1);
+    setPaymentPreviews(newPreviews);
   };
 
   // Ajouter un nouvel item
@@ -157,50 +183,56 @@ export default function TransactionForm({ onTransactionAdded }) {
       }
 
       // Télécharger les fichiers s'ils existent
-      let jewelryPhotoUrl = null;
-      let paymentProofUrl = null;
+      const jewelryPhotoUrls = [];
+      const paymentProofUrls = [];
 
-      if (jewelryFileInputRef.current?.files?.[0]) {
-        const jewelryFormData = new FormData();
-        jewelryFormData.append("file", jewelryFileInputRef.current.files[0]);
-        jewelryFormData.append("fileType", "jewelry");
-        jewelryFormData.append(
-          "location",
-          data.location || userInfo?.location || "unknown"
-        );
-        // Ajouter les informations du client et de la commande
-        jewelryFormData.append("orderNumber", data.orderNumber);
-        jewelryFormData.append("clientName", data.clientName);
+      // Télécharger toutes les photos de bijoux
+      if (jewelryPreviews.length > 0) {
+        for (let i = 0; i < jewelryPreviews.length; i++) {
+          const jewelryFormData = new FormData();
+          jewelryFormData.append("file", jewelryPreviews[i].file);
+          jewelryFormData.append("fileType", "jewelry");
+          jewelryFormData.append(
+            "location",
+            data.location || userInfo?.location || "unknown"
+          );
+          // Ajouter les informations du client et de la commande
+          jewelryFormData.append("orderNumber", data.orderNumber);
+          jewelryFormData.append("clientName", data.clientName);
 
-        const jewelryUploadResponse = await axios.post(
-          "/api/upload",
-          jewelryFormData
-        );
-        jewelryPhotoUrl = jewelryUploadResponse.data.fileUrl;
+          const jewelryUploadResponse = await axios.post(
+            "/api/upload",
+            jewelryFormData
+          );
+          jewelryPhotoUrls.push(jewelryUploadResponse.data.fileUrl);
+        }
       }
 
-      if (paymentFileInputRef.current?.files?.[0]) {
-        const paymentFormData = new FormData();
-        paymentFormData.append("file", paymentFileInputRef.current.files[0]);
-        paymentFormData.append("fileType", "payment");
-        paymentFormData.append(
-          "location",
-          data.location || userInfo?.location || "unknown"
-        );
-        // Ajouter les informations du client et de la commande
-        paymentFormData.append("orderNumber", data.orderNumber);
-        paymentFormData.append("clientName", data.clientName);
+      // Télécharger toutes les preuves de paiement
+      if (paymentPreviews.length > 0) {
+        for (let i = 0; i < paymentPreviews.length; i++) {
+          const paymentFormData = new FormData();
+          paymentFormData.append("file", paymentPreviews[i].file);
+          paymentFormData.append("fileType", "payment");
+          paymentFormData.append(
+            "location",
+            data.location || userInfo?.location || "unknown"
+          );
+          // Ajouter les informations du client et de la commande
+          paymentFormData.append("orderNumber", data.orderNumber);
+          paymentFormData.append("clientName", data.clientName);
 
-        const paymentUploadResponse = await axios.post(
-          "/api/upload",
-          paymentFormData
-        );
-        paymentProofUrl = paymentUploadResponse.data.fileUrl;
+          const paymentUploadResponse = await axios.post(
+            "/api/upload",
+            paymentFormData
+          );
+          paymentProofUrls.push(paymentUploadResponse.data.fileUrl);
+        }
       }
 
       // Ajouter les URLs des fichiers aux données de la transaction
-      data.jewelryPhotoUrl = jewelryPhotoUrl;
-      data.paymentProofUrl = paymentProofUrl;
+      data.jewelryPhotoUrls = jewelryPhotoUrls;
+      data.paymentProofUrls = paymentProofUrls;
 
       // S'assurer que items est bien formaté pour l'API
       // Calculer le poids total pour la compatibilité
@@ -230,8 +262,8 @@ export default function TransactionForm({ onTransactionAdded }) {
         phone: "",
         clientMail: "",
       });
-      setJewelryPreview(null);
-      setPaymentPreview(null);
+      setJewelryPreviews([]);
+      setPaymentPreviews([]);
       setTotalAmount(0);
 
       // Émettre un événement pour informer le composant parent
@@ -470,44 +502,90 @@ export default function TransactionForm({ onTransactionAdded }) {
           </div>
 
           <div className="form-row">
-            {/* Section photo du bijou */}
+            {/* Section photos des bijoux - maintenant avec support multi-upload */}
             <div className="file-upload-container">
-              <label>Photo du bijou</label>
+              <label>Photos des bijoux</label>
+              <button
+                type="button"
+                onClick={() => jewelryFileInputRef.current?.click()}
+                className="add-button"
+              >
+                Ajouter des photos de bijoux
+              </button>
               <input
                 type="file"
                 accept="image/*"
                 ref={jewelryFileInputRef}
                 onChange={handleJewelryPhotoUpload}
+                multiple
+                style={{ display: "none" }}
               />
-              {jewelryPreview && (
-                <div className="image-preview">
-                  <Image
-                    src={jewelryPreview}
-                    alt="Prévisualisation du bijou"
-                    width={300}
-                    height={200}
-                  />
+
+              {jewelryPreviews.length > 0 && (
+                <div className="image-previews-container">
+                  {jewelryPreviews.map((preview, index) => (
+                    <div key={index} className="image-preview-wrapper">
+                      <div className="image-preview">
+                        <Image
+                          src={preview.preview}
+                          alt={`Bijou ${index + 1}`}
+                          width={300}
+                          height={200}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="remove-image-button"
+                        onClick={() => removeJewelryPhoto(index)}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Section preuve de paiement */}
+            {/* Section preuves de paiement - maintenant avec support multi-upload */}
             <div className="file-upload-container">
-              <label>RIB/Chèque</label>
+              <label>RIB/Chèques</label>
+              <button
+                type="button"
+                onClick={() => paymentFileInputRef.current?.click()}
+                className="add-button"
+              >
+                Ajouter des RIB / chèques
+              </button>
               <input
                 type="file"
                 accept="image/*"
                 ref={paymentFileInputRef}
                 onChange={handlePaymentProofUpload}
+                multiple
+                style={{ display: "none" }}
               />
-              {paymentPreview && (
-                <div className="image-preview">
-                  <Image
-                    src={paymentPreview}
-                    alt="Prévisualisation de la preuve de paiement"
-                    width={300}
-                    height={200}
-                  />
+
+              {paymentPreviews.length > 0 && (
+                <div className="image-previews-container">
+                  {paymentPreviews.map((preview, index) => (
+                    <div key={index} className="image-preview-wrapper">
+                      <div className="image-preview">
+                        <Image
+                          src={preview.preview}
+                          alt={`Paiement ${index + 1}`}
+                          width={300}
+                          height={200}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="remove-image-button"
+                        onClick={() => removePaymentProof(index)}
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -543,6 +621,37 @@ export default function TransactionForm({ onTransactionAdded }) {
           </button>
         </div>
       </form>
+
+      <style jsx>{`
+        .image-previews-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 15px;
+          margin-top: 10px;
+        }
+
+        .image-preview-wrapper {
+          position: relative;
+          margin-bottom: 15px;
+          border: 1px solid #ddd;
+          padding: 10px;
+          border-radius: 5px;
+        }
+
+        .remove-image-button {
+          margin-top: 5px;
+          padding: 5px 10px;
+          background-color: #f44336;
+          color: white;
+          border: none;
+          border-radius: 3px;
+          cursor: pointer;
+        }
+
+        .remove-image-button:hover {
+          background-color: #d32f2f;
+        }
+      `}</style>
     </div>
   );
 }
