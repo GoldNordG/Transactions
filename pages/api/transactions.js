@@ -155,7 +155,7 @@ export default async function handler(req, res) {
         // Upload de la facture
         const factureUploadResult = await uploadInvoiceToDrive(
           facturePDF,
-          `facture_${factureNumber}.pdf`,
+          `facture_${orderNumber}.pdf`,
           transactionLocation,
           orderNumber,
           clientName
@@ -255,7 +255,7 @@ Détails de la transaction :
 Cordialement,
 GOLD NORD`,
           facturePDF,
-          `facture_${factureNumber}.pdf`
+          `facture_${orderNumber}.pdf`
         );
       }
 
