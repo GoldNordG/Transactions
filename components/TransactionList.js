@@ -178,11 +178,19 @@ export default function TransactionList() {
   const getThumbnailUrl = (url) => {
     if (!url) return null;
 
-    // Extraire l'ID du fichier Google Drive de l'URL
     const match = url.match(/\/d\/([^/]+)/);
     if (match && match[1]) {
-      // Utiliser l'API Google Drive pour les miniatures
-      return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w100`;
+      // Utiliser l'URL de visualisation publique
+      return `https://drive.google.com/uc?export=view&id=${match[1]}`;
+    }
+    return url;
+  };
+  const getModalImageUrl = (url) => {
+    if (!url) return null;
+
+    const match = url.match(/\/d\/([^/]+)/);
+    if (match && match[1]) {
+      return `https://drive.google.com/file/d/${match[1]}/preview`;
     }
     return url;
   };
@@ -376,17 +384,47 @@ export default function TransactionList() {
                     <td>{transaction.location || "Non spécifié"}</td>
                     <td>{transaction.paiement}</td>
                     <td>
-                      {transaction.jewelryPhotoUrl ? (
+                      {transaction.jewelryPhotos &&
+                      transaction.jewelryPhotos.length > 0 ? (
+                        <div className="thumbnail-container multiple-photos">
+                          {/* Afficher seulement la première photo */}
+                          <Image
+                            src={getThumbnailUrl(
+                              transaction.jewelryPhotos[0].photoUrl
+                            )}
+                            alt="Photo bijou"
+                            className="thumbnail"
+                            onClick={() =>
+                              openImageModal(
+                                getModalImageUrl(
+                                  transaction.jewelryPhotos[0].photoUrl
+                                )
+                              )
+                            }
+                            width={40}
+                            height={40}
+                          />
+                          {/* Badge avec le nombre total de photos */}
+                          {transaction.jewelryPhotos.length > 1 && (
+                            <div className="photo-count-badge">
+                              {transaction.jewelryPhotos.length}
+                            </div>
+                          )}
+                        </div>
+                      ) : transaction.jewelryPhotoUrl ? (
+                        // Fallback pour l'ancien format avec une seule photo
                         <div className="thumbnail-container">
                           <Image
                             src={getThumbnailUrl(transaction.jewelryPhotoUrl)}
                             alt="Photo bijou"
                             className="thumbnail"
                             onClick={() =>
-                              openImageModal(transaction.jewelryPhotoUrl)
+                              openImageModal(
+                                getModalImageUrl(transaction.jewelryPhotoUrl)
+                              )
                             }
-                            width={50}
-                            height={50}
+                            width={40}
+                            height={40}
                           />
                         </div>
                       ) : (
@@ -401,7 +439,9 @@ export default function TransactionList() {
                             alt="Preuve paiement"
                             className="thumbnail"
                             onClick={() =>
-                              openImageModal(transaction.paymentProofUrl)
+                              openImageModal(
+                                getModalImageUrl(transaction.paymentProofUrl)
+                              )
                             }
                             width={50}
                             height={50}
@@ -613,22 +653,74 @@ export default function TransactionList() {
                 )}
 
               <div className="detail-images">
-                {selectedTransaction.jewelryPhotoUrl && (
-                  <div className="detail-image-container">
-                    <h4>Photo du bijou</h4>
-                    <Image
-                      src={getThumbnailUrl(selectedTransaction.jewelryPhotoUrl)}
-                      alt="Photo du bijou"
-                      onClick={() =>
-                        openImageModal(selectedTransaction.jewelryPhotoUrl)
-                      }
-                      className="detail-image"
-                      width={300}
-                      height={200}
-                    />
-                  </div>
-                )}
+                {/* Photos de bijoux multiples (nouveau format) */}
+                {selectedTransaction.jewelryPhotos &&
+                  selectedTransaction.jewelryPhotos.length > 0 && (
+                    <div className="detail-image-container">
+                      <h4>
+                        Photos des bijoux (
+                        {selectedTransaction.jewelryPhotos.length})
+                      </h4>
+                      <div className="jewelry-photos-grid">
+                        {selectedTransaction.jewelryPhotos
+                          .sort((a, b) => a.photoOrder - b.photoOrder) // Trier par ordre
+                          .map((photo, index) => (
+                            <div key={photo.id} className="jewelry-photo-item">
+                              <Image
+                                src={getThumbnailUrl(photo.photoUrl)}
+                                alt={
+                                  photo.description ||
+                                  `Photo bijou ${index + 1}`
+                                }
+                                onClick={() =>
+                                  openImageModal(
+                                    getModalImageUrl(photo.photoUrl)
+                                  )
+                                }
+                                className="detail-image"
+                                width={150}
+                                height={100}
+                              />
+                              <span className="photo-number">
+                                Photo {photo.photoOrder}
+                              </span>
+                              {photo.description && (
+                                <span className="photo-description">
+                                  {photo.description}
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
 
+                {/* Fallback pour l'ancien format avec une seule photo */}
+                {(!selectedTransaction.jewelryPhotos ||
+                  selectedTransaction.jewelryPhotos.length === 0) &&
+                  selectedTransaction.jewelryPhotoUrl && (
+                    <div className="detail-image-container">
+                      <h4>Photo du bijou</h4>
+                      <Image
+                        src={getThumbnailUrl(
+                          selectedTransaction.jewelryPhotoUrl
+                        )}
+                        alt="Photo du bijou"
+                        onClick={() =>
+                          openImageModal(
+                            getModalImageUrl(
+                              selectedTransaction.jewelryPhotoUrl
+                            )
+                          )
+                        }
+                        className="detail-image"
+                        width={300}
+                        height={200}
+                      />
+                    </div>
+                  )}
+
+                {/* Preuve de paiement */}
                 {selectedTransaction.paymentProofUrl && (
                   <div className="detail-image-container">
                     <h4>Preuve de paiement</h4>
@@ -636,7 +728,9 @@ export default function TransactionList() {
                       src={getThumbnailUrl(selectedTransaction.paymentProofUrl)}
                       alt="Preuve de paiement"
                       onClick={() =>
-                        openImageModal(selectedTransaction.paymentProofUrl)
+                        openImageModal(
+                          getModalImageUrl(selectedTransaction.paymentProofUrl)
+                        )
                       }
                       className="detail-image"
                       width={300}

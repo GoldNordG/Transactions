@@ -14,7 +14,7 @@ export default function TransactionSearch({ onSearch }) {
     "Beauvais",
     "Fourmies",
     "Chaumont",
-    "Compiègne",
+    "Compiegne",
     "Dourdan",
     "Dreux",
     "Aurillac",

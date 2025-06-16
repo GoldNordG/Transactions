@@ -9,6 +9,11 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Format d'email invalide");
+      return;
+    }
 
     const res = await signIn("credentials", {
       email,

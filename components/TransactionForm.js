@@ -9,9 +9,9 @@ export default function TransactionForm({ onTransactionAdded }) {
   const [userInfo, setUserInfo] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  // Modifier pour avoir des tableaux d'images au lieu d'une seule
+  // Fixed: Use consistent naming for payment preview (singular since it's one file)
   const [jewelryPreviews, setJewelryPreviews] = useState([]);
-  const [paymentPreviews, setPaymentPreviews] = useState([]);
+  const [paymentPreview, setPaymentPreview] = useState(null);
 
   const [totalAmount, setTotalAmount] = useState(0);
   const { register, handleSubmit, reset, watch, setValue, control, getValues } =
@@ -22,8 +22,8 @@ export default function TransactionForm({ onTransactionAdded }) {
             designation: "",
             carats: "",
             weight: "",
-            unitPrice: "",
-            subtotal: "0",
+            unitPrice: "0.00", // Prix au gramme affiché à 0.00
+            subtotal: "",
           },
         ],
         phone: "",
@@ -45,7 +45,7 @@ export default function TransactionForm({ onTransactionAdded }) {
   // Observer les items pour calculer le total
   const watchItems = watch("items");
 
-  // Recalculer tous les sous-totaux et le total
+  // Recalculer tous les prix au gramme et le total
   const recalculateAll = () => {
     const values = getValues();
     let newTotal = 0;
@@ -53,18 +53,24 @@ export default function TransactionForm({ onTransactionAdded }) {
     if (values.items && values.items.length > 0) {
       values.items.forEach((item, index) => {
         const weight = parseFloat(item.weight) || 0;
-        const price = parseFloat(item.unitPrice) || 0;
-        const subtotal = weight * price;
+        const subtotal = parseFloat(item.subtotal) || 0;
 
-        // Mettre à jour le sous-total de cet item
-        setValue(`items.${index}.subtotal`, subtotal.toFixed(2));
+        // Calculer le prix au gramme en gardant plus de précision
+        let unitPrice = 0;
+        if (weight > 0) {
+          // Garder 4 décimales pour la précision interne
+          unitPrice = subtotal / weight;
+        }
 
-        // Ajouter au total
+        // Afficher seulement 2 décimales pour l'interface utilisateur
+        setValue(`items.${index}.unitPrice`, unitPrice.toFixed(2));
+
+        // Pour le total, utiliser directement le sous-total saisi (pas recalculé)
         newTotal += subtotal;
       });
     }
 
-    // Mettre à jour le total
+    // Le total est la somme exacte des sous-totaux saisis
     setTotalAmount(newTotal);
     setValue("amount", newTotal.toFixed(2));
   };
@@ -107,6 +113,8 @@ export default function TransactionForm({ onTransactionAdded }) {
           newPreviews.push({
             preview: reader.result,
             file: file,
+            type: file.type,
+            name: file.name,
           });
           if (newPreviews.length === files.length) {
             setJewelryPreviews((prev) => [...prev, ...newPreviews]);
@@ -117,25 +125,20 @@ export default function TransactionForm({ onTransactionAdded }) {
     }
   };
 
-  // Gérer le téléchargement de plusieurs preuves de paiement
+  // Fixed: Gérer le téléchargement d'une preuve de paiement
   const handlePaymentProofUpload = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length > 0) {
-      const newPreviews = [];
-
-      files.forEach((file) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          newPreviews.push({
-            preview: reader.result,
-            file: file,
-          });
-          if (newPreviews.length === files.length) {
-            setPaymentPreviews((prev) => [...prev, ...newPreviews]);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+    const file = e.target.files[0]; // Prendre seulement le premier fichier
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPaymentPreview({
+          preview: reader.result,
+          file: file,
+          type: file.type,
+          name: file.name,
+        });
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -146,11 +149,9 @@ export default function TransactionForm({ onTransactionAdded }) {
     setJewelryPreviews(newPreviews);
   };
 
-  // Supprimer une preuve de paiement
-  const removePaymentProof = (index) => {
-    const newPreviews = [...paymentPreviews];
-    newPreviews.splice(index, 1);
-    setPaymentPreviews(newPreviews);
+  // Fixed: Supprimer la preuve de paiement (singular)
+  const removePaymentProof = () => {
+    setPaymentPreview(null);
   };
 
   // Ajouter un nouvel item
@@ -159,8 +160,8 @@ export default function TransactionForm({ onTransactionAdded }) {
       designation: "",
       carats: "",
       weight: "",
-      unitPrice: "",
-      subtotal: "0",
+      unitPrice: "0.00",
+      subtotal: "",
     });
   };
 
@@ -169,7 +170,7 @@ export default function TransactionForm({ onTransactionAdded }) {
     const value = e.target.value;
     setValue(`items.${index}.${field}`, value);
 
-    // Recalculer le sous-total et le total
+    // Recalculer le prix au gramme et le total
     setTimeout(recalculateAll, 0);
   };
 
@@ -184,7 +185,6 @@ export default function TransactionForm({ onTransactionAdded }) {
 
       // Télécharger les fichiers s'ils existent
       const jewelryPhotoUrls = [];
-      const paymentProofUrls = [];
 
       // Télécharger toutes les photos de bijoux
       if (jewelryPreviews.length > 0) {
@@ -208,31 +208,29 @@ export default function TransactionForm({ onTransactionAdded }) {
         }
       }
 
-      // Télécharger toutes les preuves de paiement
-      if (paymentPreviews.length > 0) {
-        for (let i = 0; i < paymentPreviews.length; i++) {
-          const paymentFormData = new FormData();
-          paymentFormData.append("file", paymentPreviews[i].file);
-          paymentFormData.append("fileType", "payment");
-          paymentFormData.append(
-            "location",
-            data.location || userInfo?.location || "unknown"
-          );
-          // Ajouter les informations du client et de la commande
-          paymentFormData.append("orderNumber", data.orderNumber);
-          paymentFormData.append("clientName", data.clientName);
+      // Fixed: Télécharger la preuve de paiement (singular)
+      let paymentProofUrl = null;
+      if (paymentPreview) {
+        const paymentFormData = new FormData();
+        paymentFormData.append("file", paymentPreview.file);
+        paymentFormData.append("fileType", "payment");
+        paymentFormData.append(
+          "location",
+          data.location || userInfo?.location || "unknown"
+        );
+        paymentFormData.append("orderNumber", data.orderNumber);
+        paymentFormData.append("clientName", data.clientName);
 
-          const paymentUploadResponse = await axios.post(
-            "/api/upload",
-            paymentFormData
-          );
-          paymentProofUrls.push(paymentUploadResponse.data.fileUrl);
-        }
+        const paymentUploadResponse = await axios.post(
+          "/api/upload",
+          paymentFormData
+        );
+        paymentProofUrl = paymentUploadResponse.data.fileUrl;
       }
 
-      // Ajouter les URLs des fichiers aux données de la transaction
+      // Fixed: Ajouter les URLs des fichiers aux données de la transaction
       data.jewelryPhotoUrls = jewelryPhotoUrls;
-      data.paymentProofUrls = paymentProofUrls;
+      data.paymentProofUrl = paymentProofUrl; // singular since it's one file
 
       // S'assurer que items est bien formaté pour l'API
       // Calculer le poids total pour la compatibilité
@@ -255,15 +253,15 @@ export default function TransactionForm({ onTransactionAdded }) {
             designation: "",
             carats: "",
             weight: "",
-            unitPrice: "",
-            subtotal: "0",
+            unitPrice: "0.00",
+            subtotal: "",
           },
         ],
         phone: "",
         clientMail: "",
       });
       setJewelryPreviews([]);
-      setPaymentPreviews([]);
+      setPaymentPreview(null); // Fixed: use singular
       setTotalAmount(0);
 
       // Émettre un événement pour informer le composant parent
@@ -391,6 +389,7 @@ export default function TransactionForm({ onTransactionAdded }) {
                         <option value="18">18K</option>
                         <option value="14">14K</option>
                         <option value="9">9K</option>
+                        <option value="DENTAIRE">Or dentaire</option>
                         <option value="ARG">Argent</option>
                         <option value="MET ARG">Métal Argenté</option>
                         <option value="PLAT">Platinium</option>
@@ -426,12 +425,9 @@ export default function TransactionForm({ onTransactionAdded }) {
                         {...field}
                         type="number"
                         step="0.01"
-                        placeholder="Prix"
-                        required
-                        onChange={(e) => {
-                          field.onChange(e);
-                          handleValueChange(index, "unitPrice")(e);
-                        }}
+                        readOnly
+                        placeholder="0.00"
+                        style={{ backgroundColor: "#f5f5f5" }}
                       />
                     )}
                   />
@@ -445,8 +441,12 @@ export default function TransactionForm({ onTransactionAdded }) {
                         {...field}
                         type="number"
                         step="0.01"
-                        readOnly
-                        placeholder="0.00"
+                        placeholder="Sous-total"
+                        required
+                        onChange={(e) => {
+                          field.onChange(e);
+                          handleValueChange(index, "subtotal")(e);
+                        }}
                       />
                     )}
                   />
@@ -514,7 +514,7 @@ export default function TransactionForm({ onTransactionAdded }) {
               </button>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*, application/pdf"
                 ref={jewelryFileInputRef}
                 onChange={handleJewelryPhotoUpload}
                 multiple
@@ -546,46 +546,59 @@ export default function TransactionForm({ onTransactionAdded }) {
               )}
             </div>
 
-            {/* Section preuves de paiement - maintenant avec support multi-upload */}
+            {/* Fixed: Section preuve de paiement - une seule photo */}
             <div className="file-upload-container">
-              <label>RIB/Chèques</label>
+              <label>RIB/Chèque</label>
               <button
                 type="button"
                 onClick={() => paymentFileInputRef.current?.click()}
                 className="add-button"
               >
-                Ajouter des RIB / chèques
+                Ajouter un RIB / chèque
               </button>
               <input
                 type="file"
-                accept="image/*"
+                accept="image/*, application/pdf"
                 ref={paymentFileInputRef}
                 onChange={handlePaymentProofUpload}
-                multiple
                 style={{ display: "none" }}
               />
 
-              {paymentPreviews.length > 0 && (
+              {/* Fixed: Aperçu de la preuve de paiement */}
+              {paymentPreview && (
                 <div className="image-previews-container">
-                  {paymentPreviews.map((preview, index) => (
-                    <div key={index} className="image-preview-wrapper">
-                      <div className="image-preview">
+                  <div className="image-preview-wrapper">
+                    <div className="image-preview">
+                      {paymentPreview.type === "application/pdf" ? (
+                        <div className="pdf-preview">
+                          <div className="pdf-icon">📄</div>
+                          <p className="file-name">{paymentPreview.name}</p>
+                          <a
+                            href={paymentPreview.preview}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="pdf-link"
+                          >
+                            Ouvrir le PDF
+                          </a>
+                        </div>
+                      ) : (
                         <Image
-                          src={preview.preview}
-                          alt={`Paiement ${index + 1}`}
+                          src={paymentPreview.preview}
+                          alt="Preuve de paiement"
                           width={300}
                           height={200}
                         />
-                      </div>
-                      <button
-                        type="button"
-                        className="remove-image-button"
-                        onClick={() => removePaymentProof(index)}
-                      >
-                        Supprimer
-                      </button>
+                      )}
                     </div>
-                  ))}
+                    <button
+                      type="button"
+                      className="remove-image-button"
+                      onClick={removePaymentProof}
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -598,7 +611,20 @@ export default function TransactionForm({ onTransactionAdded }) {
           <div className="form-row">
             <div className="form-group">
               <label>Agence</label>
-              <input {...register("location")} placeholder="Agence" />
+              <select {...register("location")} required>
+                <option value="">Choisir...</option>
+                <option value="Maubeuge">Maubeuge</option>
+                <option value="Fourmies">Fourmies</option>
+                <option value="Chaumont">Chaumont</option>
+                <option value="Beauvais">Beauvais</option>
+                <option value="Saint-Quentin">Saint-Quentin</option>
+                <option value="Saint-Dizier">Saint-Dizier</option>
+                <option value="Le Puy-En-Velay">Le Puy-En-Velay</option>
+                <option value="Compiegne">Compiegne</option>
+                <option value="Dourdan">Dourdan</option>
+                <option value="Deux">Dreux</option>
+                <option value="Aurillac">Aurillac</option>
+              </select>
             </div>
           </div>
         )}
@@ -650,6 +676,48 @@ export default function TransactionForm({ onTransactionAdded }) {
 
         .remove-image-button:hover {
           background-color: #d32f2f;
+        }
+
+        .pdf-preview {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          background-color: #f5f5f5;
+          border: 2px dashed #ccc;
+          border-radius: 8px;
+          min-height: 200px;
+          width: 300px;
+        }
+
+        .pdf-icon {
+          font-size: 48px;
+          margin-bottom: 10px;
+        }
+
+        .file-name {
+          margin: 10px 0;
+          font-weight: bold;
+          text-align: center;
+          word-break: break-word;
+          color: #333;
+        }
+
+        .pdf-link {
+          color: #007bff;
+          text-decoration: none;
+          padding: 8px 16px;
+          background-color: #e7f3ff;
+          border: 1px solid #007bff;
+          border-radius: 4px;
+          font-size: 14px;
+          transition: all 0.3s ease;
+        }
+
+        .pdf-link:hover {
+          background-color: #007bff;
+          color: white;
         }
       `}</style>
     </div>

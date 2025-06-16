@@ -77,6 +77,36 @@ async function main() {
       location: "Compiegne",
       password: "WS1O&fo15C<$",
     },
+    {
+      email: "goldnorddourdan@gmail.com",
+      location: "Dourdan",
+      password: "1bfmLwN5QybwAZVr",
+    },
+    {
+      email: "beauvais2@goldnord.fr",
+      location: "Beauvais",
+      password: "7RLflPOajdkFD9TK",
+    },
+    {
+      email: "goldnordfourmies@gmail.com",
+      location: "Fourmies",
+      password: "ZCERr1AtKPSMzU8k",
+    },
+    {
+      email: "goldnordvitrylefrancois@gmail.com",
+      location: "Vitry-Le-Francois",
+      password: "PbBeKFNlvJv6tqUm",
+    },
+    {
+      email: "dreux@goldnord.fr",
+      location: "Dreux",
+      password: "qase701t7Ijsg99L",
+    },
+    {
+      email: "goldnordsaintdizier@gmail.com",
+      location: "Saint-Dizier",
+      password: "9yh2rNweJvcJ9PV2",
+    },
   ];
 
   for (const agency of agencies) {

@@ -17,6 +17,16 @@ model User {
   role         String        // Role of the user (e.g.,"superadmin" "admin", "agency")
   location     String?       // Location of the agency (e.g., "Maubeuge")
   transactions Transaction[] // Relation to transactions
+  agencyId     Int?          // Foreign key to Agency
+  agency       Agency?       @relation(fields: [agencyId], references: [id])
+}
+
+model Agency {
+  id           Int           @id @default(autoincrement())
+  name         String
+  location     String
+  users        User[]        // Relation to users
+  transactions Transaction[] // Relation to transactions
 }
 
 model Transaction {
@@ -24,24 +34,29 @@ model Transaction {
   date              DateTime
   clientName        String
   factureNumber     String    @default("N/A")
-  clientMail        String?   // Optionnel
-  phone             String?   // Optionnel
+  clientMail        String?   
+  phone             String?   
   adresse           String
   codePostal        String
   ville             String
   orderNumber       String
-  designation       String?   // Optionnel maintenant car déplacé dans TransactionItem
-  weight            Float     // Total weight, calculé à partir des items
-  amount            Float     // Total amount, calculé à partir des items
+  designation       String?   
+  weight            Float     
+  amount            Float     
   paiement          String    @default("non spécifié")
-  location          String?   // Optionnel
-  jewelryPhotoUrl   String?   // URL de la photo du bijou dans Google Drive
-  paymentProofUrl   String?   // URL de la preuve de paiement dans Google Drive
-  fraudChecked      Boolean   @default(false)  // Indique si la transaction a été vérifiée
-  isFraud           Boolean   @default(false)  // Indique si la transaction est frauduleuse
+  location          String?   
+  jewelryPhotoUrl   String?   // GARDER pour compatibilité
+  paymentProofUrl   String?   
+  fraudChecked      Boolean   @default(false)  
+  isFraud           Boolean   @default(false)  
   userId            Int?      // Foreign key to User Optionnel
   user              User?     @relation(fields: [userId], references: [id]) // Relation à User
-  items             TransactionItem[] // Relation aux items
+  agencyId          Int?      
+  agency            Agency?   @relation(fields: [agencyId], references: [id])
+  items             TransactionItem[] 
+  jewelryPhotos     JewelryPhoto[]    // NOUVEAU: Relation aux photos multiples
+  factureGoogleDriveUrl      String?
+  retractationGoogleDriveUrl String?
 }
 
 model TransactionItem {
@@ -53,4 +68,14 @@ model TransactionItem {
   subtotal      Float
   transactionId Int
   transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+}
+model JewelryPhoto {
+  id            Int         @id @default(autoincrement())
+  photoUrl      String      // URL de la photo dans Google Drive
+  photoOrder    Int         @default(1) // Ordre d'affichage
+  description   String?     // Description optionnelle de la photo
+  transactionId Int
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  
+  @@index([transactionId]) // Index pour optimiser les requêtes
 }

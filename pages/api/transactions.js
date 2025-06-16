@@ -1,5 +1,6 @@
 import { sendEmail } from "../../lib/mailer";
 import { generatePDF } from "../../lib/generatePDF";
+import { uploadInvoiceToDrive } from "../../lib/driveUtils"; // AJOUT de l'import
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getServerSession } from "next-auth";
@@ -30,7 +31,7 @@ export default async function handler(req, res) {
         amount,
         paiement,
         location,
-        jewelryPhotoUrl,
+        jewelryPhotoUrls,
         paymentProofUrl,
         items,
       } = req.body;
@@ -80,6 +81,10 @@ export default async function handler(req, res) {
         0
       );
 
+      const validJewelryPhotoUrls = Array.isArray(jewelryPhotoUrls)
+        ? jewelryPhotoUrls.filter((url) => url && url.trim() !== "")
+        : [];
+
       const newTransaction = await prisma.transaction.create({
         data: {
           date: new Date(date),
@@ -99,9 +104,21 @@ export default async function handler(req, res) {
           amount: parseFloat(amount),
           paiement,
           location: transactionLocation,
-          userId: session.user.id,
-          jewelryPhotoUrl: jewelryPhotoUrl || null,
+          user: {
+            connect: { id: session.user.id },
+          },
           paymentProofUrl: paymentProofUrl || null,
+
+          jewelryPhotos:
+            validJewelryPhotoUrls.length > 0
+              ? {
+                  create: validJewelryPhotoUrls.map((url, index) => ({
+                    photoUrl: url,
+                    photoOrder: index + 1,
+                    description: null,
+                  })),
+                }
+              : undefined,
           items: {
             create: items.map((item) => ({
               designation: item.designation,
@@ -112,9 +129,13 @@ export default async function handler(req, res) {
             })),
           },
         },
-        include: { items: true },
+        include: {
+          items: true,
+          jewelryPhotos: true,
+        },
       });
 
+      // Générer les PDFs
       const facturePDF = await generatePDF(
         { ...newTransaction, items: newTransaction.items },
         "facture"
@@ -123,6 +144,53 @@ export default async function handler(req, res) {
         { ...newTransaction, items: newTransaction.items },
         "retractation"
       );
+
+      // NOUVEAU : Sauvegarder les PDFs sur Google Drive
+      let factureGoogleDriveUrl = null;
+      let retractationGoogleDriveUrl = null;
+
+      try {
+        console.log("Début de l'upload des PDFs vers Google Drive...");
+
+        // Upload de la facture
+        const factureUploadResult = await uploadInvoiceToDrive(
+          facturePDF,
+          `facture_${factureNumber}.pdf`,
+          transactionLocation,
+          orderNumber,
+          clientName
+        );
+        factureGoogleDriveUrl = factureUploadResult.fileUrl;
+        console.log("Facture uploadée avec succès:", factureGoogleDriveUrl);
+
+        // Upload du formulaire de rétractation
+        const retractationUploadResult = await uploadInvoiceToDrive(
+          retractationPDF,
+          `retractation_${orderNumber}.pdf`,
+          transactionLocation,
+          orderNumber,
+          clientName
+        );
+        retractationGoogleDriveUrl = retractationUploadResult.fileUrl;
+        console.log(
+          "Rétractation uploadée avec succès:",
+          retractationGoogleDriveUrl
+        );
+
+        // Optionnel: Mettre à jour la transaction avec les URLs Google Drive
+        await prisma.transaction.update({
+          where: { id: newTransaction.id },
+          data: {
+            factureGoogleDriveUrl: factureGoogleDriveUrl,
+            retractationGoogleDriveUrl: retractationGoogleDriveUrl,
+          },
+        });
+      } catch (driveError) {
+        console.error("Erreur lors de l'upload vers Google Drive:", driveError);
+        // Ne pas interrompre le processus si l'upload Drive échoue
+        // L'email et la transaction seront quand même créés
+      }
+
       const formattedDate = format(new Date(date), "dd/MM/yyyy", {
         locale: fr,
       });
@@ -141,9 +209,14 @@ export default async function handler(req, res) {
         )
         .join("\n");
 
+      const photoInfo =
+        validJewelryPhotoUrls.length > 0
+          ? `\nPhotos des bijoux : ${validJewelryPhotoUrls.length} photo(s) attachée(s)`
+          : "";
+
       await sendEmail(
-        "goldnord.digital@gmail.com",
-        `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}`,
+        "facturation.goldnord@gmail.com",
+        `Agence ${location} n° d'ordre : ${orderNumber} le ${formattedDate}, (${clientName})`,
         `Une nouvelle transaction a été enregistrée.
 
 Détails de la transaction :
@@ -154,7 +227,7 @@ Détails de la transaction :
 - Numéro d'ordre : ${orderNumber}
 - Lieu : ${transactionLocation || "Non spécifié"}
 - Mode de paiement : ${paiement}
-- Vendeur : ${session.user.email}
+- Vendeur : ${session.user.email}${photoInfo}
 
 Articles :
 ${itemsText}
@@ -178,8 +251,6 @@ Détails de la transaction :
 - N° de facture : ${factureNumber}
 - N° d'ordre : ${orderNumber}
 - Total : ${amount} €
-
-Cette facture a également été envoyée à l'administration centrale.
 
 Cordialement,
 GOLD NORD`,
@@ -207,7 +278,11 @@ GOLD NORD`,
         );
       }
 
-      res.status(201).json(newTransaction);
+      res.status(201).json({
+        ...newTransaction,
+        factureGoogleDriveUrl,
+        retractationGoogleDriveUrl,
+      });
     } catch (error) {
       console.error("Erreur lors de la création de la transaction:", error);
       res.status(500).json({
@@ -268,6 +343,9 @@ GOLD NORD`,
         where: filters,
         include: {
           items: true,
+          jewelryPhotos: {
+            orderBy: { photoOrder: "asc" },
+          },
           user: { select: { email: true, location: true, role: true } },
         },
         orderBy: { date: "desc" },
