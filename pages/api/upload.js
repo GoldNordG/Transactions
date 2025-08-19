@@ -1,267 +1,207 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "./auth/[...nextauth]";
-import { google } from "googleapis";
-import { formidable } from "formidable";
-import fs from "fs";
-import path from "path";
-import os from "os";
-import { v4 as uuidv4 } from "uuid";
+// pages/api/auth/[...nextauth].js
+import NextAuth from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import { compare } from "bcrypt";
+import prisma from "../../../lib/prisma.js";
 
-// Configuration pour le parseur de formulaire
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
+export const runtime = "nodejs";
 
-// Configuration de Google Drive API
-const authenticateGoogleDrive = async () => {
-  const auth = new google.auth.GoogleAuth({
-    credentials: {
-      client_email: process.env.GOOGLE_CLIENT_EMAIL,
-      private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+export const authOptions = {
+  providers: [
+    // Votre système de credentials existant
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Mot de passe", type: "password" },
+      },
+      async authorize(credentials) {
+        console.log("✅ Credentials received:", credentials);
+
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
+
+        console.log("👤 User found in DB:", user);
+
+        if (!user) {
+          console.log("❌ No user found with this email.");
+          return null;
+        }
+
+        const isPasswordValid = await compare(
+          credentials.password,
+          user.password
+        );
+
+        console.log("🔒 Password valid:", isPasswordValid);
+
+        if (!isPasswordValid) {
+          console.log("❌ Invalid password.");
+          return null;
+        }
+
+        return {
+          id: user.id,
+          email: user.email,
+          role: user.role,
+          location: user.location,
+          authType: "credentials", // Marquer le type d'authentification
+        };
+      },
+    }),
+
+    // Nouveau provider Google OAuth
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          scope:
+            "openid email profile https://www.googleapis.com/auth/drive.file",
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
+    }),
+  ],
+  callbacks: {
+    async signIn({ user, account, profile }) {
+      // Si c'est une connexion Google, vérifier si l'utilisateur existe dans la DB
+      if (account.provider === "google") {
+        console.log("🔍 Google sign-in attempt for:", profile.email);
+
+        const existingUser = await prisma.user.findUnique({
+          where: { email: profile.email },
+        });
+
+        if (!existingUser) {
+          console.log("❌ Google user not found in database:", profile.email);
+          // Rejeter la connexion si l'utilisateur n'existe pas dans votre DB
+          return false;
+        }
+
+        console.log("✅ Google user found in DB:", existingUser.email);
+        // Ajouter les infos de l'utilisateur DB au profil
+        user.role = existingUser.role;
+        user.location = existingUser.location;
+        user.dbId = existingUser.id;
+      }
+
+      return true;
     },
-    scopes: ["https://www.googleapis.com/auth/drive"],
-  });
 
-  const drive = google.drive({
-    version: "v3",
-    auth,
-  });
+    async jwt({ token, user, account }) {
+      // Première connexion
+      if (user) {
+        token.role = user.role;
+        token.location = user.location;
+        token.authType = user.authType || "google";
 
-  return drive;
+        // Pour les connexions credentials
+        if (user.id) {
+          token.id = user.id;
+        }
+
+        // Pour les connexions Google
+        if (user.dbId) {
+          token.id = user.dbId;
+        }
+      }
+
+      // Stocker les tokens OAuth Google
+      if (account && account.provider === "google") {
+        token.accessToken = account.access_token;
+        token.refreshToken = account.refresh_token;
+        token.accessTokenExpires = account.expires_at * 1000;
+        token.authType = "google";
+      }
+
+      // Rafraîchir le token Google si nécessaire
+      if (
+        token.authType === "google" &&
+        Date.now() > token.accessTokenExpires
+      ) {
+        console.log("🔄 Refreshing Google token");
+        return await refreshAccessToken(token);
+      }
+
+      return token;
+    },
+
+    async session({ session, token }) {
+      // Informations communes
+      if (token) {
+        session.user.id = token.id;
+        session.user.role = token.role;
+        session.user.location = token.location;
+        session.user.authType = token.authType;
+      }
+
+      // Tokens Google pour l'API Drive
+      if (token.authType === "google") {
+        session.accessToken = token.accessToken;
+        session.refreshToken = token.refreshToken;
+        session.error = token.error;
+      }
+
+      return session;
+    },
+  },
+  pages: {
+    signIn: "/login",
+    error: "/auth/error",
+  },
+  session: {
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 1 day
+  },
+  useSecureCookies: process.env.NODE_ENV === "production",
+  debug: process.env.NODE_ENV === "development",
 };
 
-// Obtenir les ID des dossiers par agence
-const getFolderIdByAgency = async (drive, agencyName, fileType) => {
-  // ID du dossier parent pour toutes les agences
-  const parentFolderId = process.env.GOOGLE_DRIVE_PARENT_FOLDER_ID;
-
-  console.log("Using parent folder ID:", parentFolderId);
-  console.log("Agency name:", agencyName);
-  console.log("File type:", fileType);
-
-  // Validate parentFolderId
-  if (!parentFolderId) {
-    throw new Error(
-      "GOOGLE_DRIVE_PARENT_FOLDER_ID is not set in environment variables"
-    );
-  }
-
-  let agencyFolderId;
+/**
+ * Rafraîchir le token Google
+ */
+async function refreshAccessToken(token) {
   try {
-    // First check if we can access the parent folder
-    try {
-      const parentFolder = await drive.files.get({
-        fileId: parentFolderId,
-        fields: "id,name",
-      });
-      console.log(
-        "Successfully accessed parent folder:",
-        parentFolder.data.name
-      );
-    } catch (folderError) {
-      console.error("Failed to access parent folder:", folderError.message);
-      console.error(
-        "Error details:",
-        JSON.stringify(folderError.response?.data || {})
-      );
-      throw new Error(`Cannot access parent folder: ${folderError.message}`);
-    }
+    const url = "https://oauth2.googleapis.com/token";
 
-    // Try to list files with simple query first to test API access
-    try {
-      const testQuery = await drive.files.list({
-        pageSize: 5,
-        fields: "files(id, name)",
-      });
-      console.log(
-        "API connection working - found files:",
-        testQuery.data.files.length
-      );
-    } catch (testError) {
-      console.error("Failed basic API test:", testError.message);
-      throw new Error(`API access test failed: ${testError.message}`);
-    }
-
-    // Now try the actual query for agency folder
-    console.log(
-      "Running query:",
-      `name='${agencyName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`
-    );
-
-    const agencyFolderResponse = await drive.files.list({
-      q: `name='${agencyName}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      fields: "files(id, name)",
+    const response = await fetch(url, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      method: "POST",
+      body: new URLSearchParams({
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        grant_type: "refresh_token",
+        refresh_token: token.refreshToken,
+      }),
     });
 
-    // Check if agency folder exists
-    if (agencyFolderResponse.data.files.length > 0) {
-      // Le dossier d'agence existe déjà
-      agencyFolderId = agencyFolderResponse.data.files[0].id;
-      console.log("Found existing agency folder:", agencyFolderId);
-    } else {
-      // Créer le dossier d'agence s'il n'existe pas
-      console.log("Creating new agency folder for:", agencyName);
-      const agencyFolderMetadata = {
-        name: agencyName,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [parentFolderId],
-      };
+    const refreshedTokens = await response.json();
 
-      const agencyFolder = await drive.files.create({
-        resource: agencyFolderMetadata,
-        fields: "id",
-      });
-
-      agencyFolderId = agencyFolder.data.id;
-      console.log("Created new agency folder with ID:", agencyFolderId);
+    if (!response.ok) {
+      throw refreshedTokens;
     }
 
-    // Rechercher ou créer le sous-dossier spécifique au type de fichier (bijoux ou paiements)
-    const folderName = fileType === "jewelry" ? "Bijoux" : "Preuves_Paiement";
-    console.log(
-      "Looking for subfolder:",
-      folderName,
-      "in agency folder:",
-      agencyFolderId
-    );
-
-    const typeFolderResponse = await drive.files.list({
-      q: `name='${folderName}' and '${agencyFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
-      fields: "files(id, name)",
-    });
-
-    if (typeFolderResponse.data.files.length > 0) {
-      // Le sous-dossier existe déjà
-      const folderId = typeFolderResponse.data.files[0].id;
-      console.log("Found existing subfolder:", folderId);
-      return folderId;
-    } else {
-      // Créer le sous-dossier s'il n'existe pas
-      console.log("Creating new subfolder:", folderName);
-      const typeFolderMetadata = {
-        name: folderName,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [agencyFolderId],
-      };
-
-      const typeFolder = await drive.files.create({
-        resource: typeFolderMetadata,
-        fields: "id",
-      });
-
-      console.log("Created new subfolder with ID:", typeFolder.data.id);
-      return typeFolder.data.id;
-    }
-  } catch (error) {
-    console.error(
-      "Erreur lors de la gestion des dossiers sur Google Drive:",
-      error
-    );
-    throw new Error("Erreur lors de la gestion des dossiers sur Google Drive");
-  }
-};
-
-export default async function handler(req, res) {
-  // Vérifier l'authentification
-  const session = await getServerSession(req, res, authOptions);
-
-  if (!session) {
-    return res
-      .status(401)
-      .json({ message: "Non authentifié. Veuillez vous connecter." });
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ message: "Méthode non autorisée" });
-  }
-
-  try {
-    // Créer un répertoire temporaire si nécessaire
-    const tmpDir = path.join(os.tmpdir(), "uploads");
-    fs.mkdirSync(tmpDir, { recursive: true });
-
-    // Parsage du formulaire avec la nouvelle API formidable v4+
-    const form = formidable({
-      uploadDir: tmpDir,
-      keepExtensions: true,
-      maxFileSize: 10 * 1024 * 1024, // 10MB max
-    });
-
-    // Utiliser Promise pour gérer le parsage du formulaire
-    const [fields, files] = await new Promise((resolve, reject) => {
-      form.parse(req, (err, fields, files) => {
-        if (err) reject(err);
-        resolve([fields, files]);
-      });
-    });
-
-    // Vérifier si un fichier a été envoyé
-    const file = files.file[0]; // Dans formidable v4+ les fichiers sont des tableaux
-    if (!file) {
-      return res.status(400).json({ message: "Aucun fichier n'a été envoyé" });
-    }
-
-    // Déterminer le type de fichier et l'agence
-    const fileType = fields.fileType?.[0] || "unknown";
-    const location = fields.location?.[0] || "unknown";
-    const orderNumber = fields.orderNumber?.[0] || "";
-    const clientName = fields.clientName?.[0] || "";
-
-    // Authentifier Google Drive
-    const drive = await authenticateGoogleDrive();
-
-    // Obtenir l'ID du dossier pour cette agence et ce type de fichier
-    const folderId = await getFolderIdByAgency(drive, location, fileType);
-
-    // Préparer le nom du fichier avec les informations du client et de la commande
-    const fileExtension = path.extname(file.originalFilename);
-
-    // Format: [Numéro d'ordre]_[Nom client]_[Agence]_[Type de fichier]_[Horodatage]
-    let fileName = "";
-
-    if (orderNumber && clientName) {
-      // Si nous avons le numéro d'ordre et le nom du client, les utiliser
-      const safeClientName = clientName.replace(/[^a-zA-Z0-9]/g, "_"); // Remplacer les caractères spéciaux
-      fileName = `${orderNumber}_${safeClientName}_${location}_${fileType}${fileExtension}`;
-    } else {
-      // Sinon, utiliser l'ancien format avec un identifiant unique
-      fileName = `${fileType}_${Date.now()}_${uuidv4().slice(
-        0,
-        8
-      )}${fileExtension}`;
-    }
-
-    // Télécharger le fichier sur Google Drive
-    const fileMetadata = {
-      name: fileName,
-      parents: [folderId],
+    return {
+      ...token,
+      accessToken: refreshedTokens.access_token,
+      accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+      refreshToken: refreshedTokens.refresh_token ?? token.refreshToken,
     };
-
-    const media = {
-      mimeType: file.mimetype,
-      body: fs.createReadStream(file.filepath),
-    };
-
-    const driveResponse = await drive.files.create({
-      resource: fileMetadata,
-      media: media,
-      fields: "id, webViewLink",
-    });
-
-    // Supprimer le fichier temporaire
-    fs.unlinkSync(file.filepath);
-
-    // Retourner l'URL du fichier
-    res.status(200).json({
-      fileUrl: driveResponse.data.webViewLink,
-      fileId: driveResponse.data.id,
-    });
   } catch (error) {
-    console.error("Erreur lors du téléchargement du fichier:", error);
-    res
-      .status(500)
-      .json({ message: "Erreur lors du téléchargement du fichier" });
+    console.error("❌ Error refreshing access token:", error);
+
+    return {
+      ...token,
+      error: "RefreshAccessTokenError",
+    };
   }
 }
+
+export default NextAuth(authOptions);
