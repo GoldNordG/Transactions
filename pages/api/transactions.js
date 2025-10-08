@@ -125,7 +125,7 @@ export default async function handler(req, res) {
               carats: item.carats,
               weight: parseFloat(item.weight),
               unitPrice: parseFloat(item.unitPrice),
-              subtotal: parseFloat(item.weight) * parseFloat(item.unitPrice),
+              subtotal: parseFloat(item.subtotal),
             })),
           },
         },
@@ -202,9 +202,7 @@ export default async function handler(req, res) {
 - Poids : ${item.weight} g
 - Carats : ${item.carats}
 - Prix unitaire : ${item.unitPrice} €/g
-- Sous-total : ${(parseFloat(item.weight) * parseFloat(item.unitPrice)).toFixed(
-            2
-          )} €
+- Sous-total : ${item.subtotal} €
 `
         )
         .join("\n");

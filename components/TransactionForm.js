@@ -624,6 +624,7 @@ export default function TransactionForm({ onTransactionAdded }) {
                 <option value="Dourdan">Dourdan</option>
                 <option value="Deux">Dreux</option>
                 <option value="Aurillac">Aurillac</option>
+                <option value="Vitry-Le-Francois">Vitry-Le-Francois</option>
               </select>
             </div>
           </div>
