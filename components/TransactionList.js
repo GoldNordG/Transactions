@@ -269,18 +269,6 @@ export default function TransactionList() {
           <span className="stat-label">Nombre de transactions</span>
           <span className="stat-value">{totalStats.count}</span>
         </div>
-        <div className="stat-box">
-          <span className="stat-label">Poids total</span>
-          <span className="stat-value">
-            {totalStats.totalWeight.toFixed(2)} g
-          </span>
-        </div>
-        <div className="stat-box">
-          <span className="stat-label">Montant total</span>
-          <span className="stat-value">
-            {totalStats.totalAmount.toFixed(2)} €
-          </span>
-        </div>
       </div>
 
       {/* Pagination en haut */}
